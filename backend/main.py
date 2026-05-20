@@ -1,16 +1,10 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 import io
 import pandas as pd
-from pydantic import BaseModel
 
 from bots import Bots
 
 app = FastAPI()
-
-class DataRow(BaseModel):
-    item_id: int
-    name: str
-    price: float
 
 @app.post("/start_process")
 async def process_stuff(context:str,data_file:UploadFile = File()):
@@ -37,7 +31,7 @@ async def process_stuff(context:str,data_file:UploadFile = File()):
         try:
             bots.create_agents()
             bots.create_tasks()
-            bots.create_crew()
+            bots.create_crew(df)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Crew execution failed: {str(e)}")
     except Exception as e:
