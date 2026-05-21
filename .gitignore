@@ -1,6 +1,7 @@
 # Logs
 logs
 *.log
+*.md
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -12,6 +13,7 @@ node_modules
 dist
 dist-ssr
 *.local
+__pycache__
 
 # Editor directories and files
 .venv
