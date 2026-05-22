@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import watch, analysis, user
+from routes import watch, analysis, user, charts
 
 app = FastAPI(title="Fitness AI Agents")
 
@@ -18,6 +18,7 @@ app.add_middleware(
 app.include_router(watch.router,    prefix="/watch",    tags=["Watch"])
 app.include_router(analysis.router, prefix="/analyze",  tags=["Analysis"])
 app.include_router(user.router,     prefix="/user",     tags=["User"])
+app.include_router(charts.router,   prefix="/charts",   tags=["Charts"])
 
 @app.get("/health")
 async def health():

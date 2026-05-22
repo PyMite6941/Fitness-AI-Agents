@@ -1,4 +1,6 @@
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react';
+import { Show, SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './App.css';
 
 const features = [
@@ -31,6 +33,13 @@ const steps = [
 ];
 
 export default function FitnessAI() {
+	const { isSignedIn, isLoaded } = useAuth();
+	const navigate = useNavigate();
+
+	useEffect(() => {
+		if (isLoaded && isSignedIn) navigate('/dashboard', { replace: true });
+	}, [isLoaded, isSignedIn]);
+
 	return (
 		<div className='page'>
 

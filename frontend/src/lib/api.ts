@@ -32,6 +32,9 @@ export const api = {
 			body: JSON.stringify({ context, date_from: dateFrom, date_to: dateTo }),
 		}),
 
+	getCharts: (token: string) =>
+		request('/charts/', token),
+
 	syncWatch: (token: string, payload: object) =>
 		request('/watch/sync', token, {
 			method: 'POST',
