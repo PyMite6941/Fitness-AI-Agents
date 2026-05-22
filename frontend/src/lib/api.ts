@@ -40,4 +40,16 @@ export const api = {
 			method: 'POST',
 			body: JSON.stringify(payload),
 		}),
+
+	saveRoute: (token: string, payload: object) =>
+		request('/routes/', token, {
+			method: 'POST',
+			body: JSON.stringify(payload),
+		}),
+
+	getRoutes: (token: string, limit = 20) =>
+		request(`/routes/?limit=${limit}`, token),
+
+	getRoute: (token: string, id: string) =>
+		request(`/routes/${id}`, token),
 };

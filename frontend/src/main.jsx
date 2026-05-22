@@ -5,6 +5,7 @@ import { ClerkProvider, useAuth } from '@clerk/react'
 import './index.css'
 import App from './App.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import RoutesPage from './pages/Routes.jsx'
 
 function ProtectedRoute({ children }) {
   const { isSignedIn, isLoaded } = useAuth()
@@ -20,6 +21,7 @@ createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </ClerkProvider>

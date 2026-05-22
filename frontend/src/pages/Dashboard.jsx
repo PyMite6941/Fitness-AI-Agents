@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/react';
 import {
 	Chart as ChartJS,
@@ -43,6 +44,7 @@ const NAV_TABS = ['Overview', 'Heart Rate', 'Calories', 'Steps', 'Sleep', 'AI An
 
 export default function Dashboard() {
 	const { getToken } = useAuth();
+	const navigate = useNavigate();
 	const [tab, setTab] = useState('Overview');
 	const [stats, setStats] = useState(null);
 	const [charts, setCharts] = useState(null);
@@ -117,6 +119,9 @@ export default function Dashboard() {
 							{t}
 						</button>
 					))}
+					<button className='sidebar-link' onClick={() => navigate('/routes')}>
+						Routes
+					</button>
 				</nav>
 				{stats && (
 					<div className='sidebar-stats'>

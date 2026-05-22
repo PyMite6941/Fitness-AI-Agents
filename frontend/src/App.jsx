@@ -1,4 +1,4 @@
-import { Show, SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react';
+import { SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
@@ -50,13 +50,14 @@ export default function FitnessAI() {
 					<a href='#features'>Features</a>
 				</div>
 				<div className='nav-auth'>
-					<Show when="signed-out">
-						<SignInButton mode="modal"><button className='nav-btn'>Sign In</button></SignInButton>
-						<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary'>Get Started</button></SignUpButton>
-					</Show>
-					<Show when="signed-in">
+					{!isSignedIn ? (
+						<>
+							<SignInButton mode="modal"><button className='nav-btn'>Log In</button></SignInButton>
+							<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary'>Sign Up</button></SignUpButton>
+						</>
+					) : (
 						<UserButton />
-					</Show>
+					)}
 				</div>
 			</nav>
 
@@ -70,14 +71,13 @@ export default function FitnessAI() {
 						Connect your wearable. Ask a question. Get AI-powered insights built from your actual fitness data.
 					</p>
 					<div className='hero-actions'>
-						<Show when="signed-out">
+						{!isSignedIn ? (
 							<SignUpButton mode="modal">
 								<button className='hero-btn'>START FOR FREE</button>
 							</SignUpButton>
-						</Show>
-						<Show when="signed-in">
+						) : (
 							<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
-						</Show>
+						)}
 						<a href='#how-it-works' className='hero-btn-ghost'>SEE HOW IT WORKS</a>
 					</div>
 				</div>
@@ -137,14 +137,13 @@ export default function FitnessAI() {
 				<div className='cta-inner'>
 					<p className='section-tag'>GET STARTED</p>
 					<h2>Your data has answers.<br />Start asking.</h2>
-					<Show when="signed-out">
+					{!isSignedIn ? (
 						<SignUpButton mode="modal">
 							<button className='hero-btn'>CREATE FREE ACCOUNT</button>
 						</SignUpButton>
-					</Show>
-					<Show when="signed-in">
+					) : (
 						<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
-					</Show>
+					)}
 				</div>
 			</section>
 

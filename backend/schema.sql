@@ -37,3 +37,19 @@ CREATE TABLE analyses (
 );
 
 CREATE INDEX idx_analyses_user_time ON analyses (user_id, created_at DESC);
+
+CREATE TABLE routes (
+    id               UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id          TEXT        NOT NULL,
+    workout_type     TEXT        NOT NULL,
+    coordinates      JSONB       NOT NULL DEFAULT '[]',
+    distance_meters  FLOAT,
+    duration_seconds INTEGER,
+    pace             TEXT,
+    started_at       TIMESTAMPTZ NOT NULL,
+    ended_at         TIMESTAMPTZ NOT NULL,
+    notes            TEXT,
+    created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_routes_user_time ON routes (user_id, started_at DESC);

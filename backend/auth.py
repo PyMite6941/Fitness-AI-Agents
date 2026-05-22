@@ -1,28 +1,30 @@
 import os
-import httpx
 import jwt
+from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 bearer = HTTPBearer()
 
-CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")  # https://<your-clerk-domain>/.well-known/jwks.json
+CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")
+
+_jwks_client: PyJWKClient | None = None
 
 
-async def get_jwks() -> dict:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(CLERK_JWKS_URL)
-        response.raise_for_status()
-        return response.json()
+def get_jwks_client() -> PyJWKClient:
+    global _jwks_client
+    if _jwks_client is None:
+        _jwks_client = PyJWKClient(CLERK_JWKS_URL, cache_keys=True)
+    return _jwks_client
 
 
 async def verify_token(credentials: HTTPAuthorizationCredentials = Security(bearer)) -> dict:
     token = credentials.credentials
     try:
-        jwks = await get_jwks()
+        signing_key = get_jwks_client().get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            jwks,
+            signing_key.key,
             algorithms=["RS256"],
             options={"verify_aud": False},
         )
