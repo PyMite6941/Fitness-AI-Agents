@@ -53,3 +53,18 @@ CREATE TABLE routes (
 );
 
 CREATE INDEX idx_routes_user_time ON routes (user_id, started_at DESC);
+
+CREATE TABLE user_integrations (
+    id             UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id        TEXT        NOT NULL,
+    provider       TEXT        NOT NULL,
+    access_token   TEXT        NOT NULL,
+    refresh_token  TEXT,
+    expires_at     TIMESTAMPTZ,
+    athlete_id     TEXT,
+    created_at     TIMESTAMPTZ DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, provider)
+);
+
+CREATE INDEX idx_integrations_user ON user_integrations (user_id);

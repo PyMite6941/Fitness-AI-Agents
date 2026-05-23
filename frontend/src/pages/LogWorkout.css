@@ -1,0 +1,396 @@
+.log-page {
+	min-height: 100vh;
+	background: #0d0d0d;
+	color: #fff;
+	font-family: 'Inter', sans-serif;
+	display: flex;
+	flex-direction: column;
+}
+
+/* mode tabs in header */
+.mode-tabs {
+	display: flex;
+	gap: 4px;
+	background: #1a1a1a;
+	padding: 4px;
+	border-radius: 8px;
+	margin-left: auto;
+}
+
+.mode-tabs button {
+	padding: 6px 16px;
+	border-radius: 6px;
+	border: none;
+	background: transparent;
+	color: rgba(255,255,255,0.4);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.mode-tabs button.active {
+	background: #ff3c00;
+	color: #fff;
+}
+
+.mode-tabs button:hover:not(.active) {
+	color: rgba(255,255,255,0.8);
+}
+
+/* accuracy notice */
+.accuracy-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	background: rgba(255,200,0,0.07);
+	border: 1px solid rgba(255,200,0,0.2);
+	border-left: 3px solid rgba(255,200,0,0.6);
+	padding: 12px 16px;
+	font-size: 13px;
+	color: rgba(255,255,255,0.55);
+	line-height: 1.5;
+	margin: 0 24px;
+}
+
+.notice-icon {
+	color: rgba(255,200,0,0.7);
+	font-size: 14px;
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
+/* connect section */
+.connect-section {
+	max-width: 600px;
+	margin: 0 auto;
+	padding: 24px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.connect-intro {
+	font-size: 14px;
+	color: rgba(255,255,255,0.45);
+	line-height: 1.6;
+	margin: 0 0 24px;
+}
+
+.app-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.app-card {
+	background: #111;
+	border: 1px solid #1e1e1e;
+	border-radius: 10px;
+	padding: 16px;
+	transition: border-color 0.15s;
+}
+
+.app-card:not(.soon):hover {
+	border-color: rgba(255,60,0,0.25);
+}
+
+.app-card.soon {
+	opacity: 0.5;
+}
+
+.app-card-top {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 6px;
+}
+
+.app-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.app-name {
+	font-size: 14px;
+	font-weight: 700;
+	color: #fff;
+}
+
+.app-badge {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	padding: 2px 8px;
+	border-radius: 20px;
+	margin-left: auto;
+}
+
+.app-badge.connected {
+	background: rgba(0,200,100,0.15);
+	color: #00c864;
+	border: 1px solid rgba(0,200,100,0.3);
+}
+
+.app-badge.soon {
+	background: rgba(255,255,255,0.06);
+	color: rgba(255,255,255,0.3);
+}
+
+.app-badge.ios {
+	background: rgba(100,180,255,0.1);
+	color: rgba(100,180,255,0.7);
+	border: 1px solid rgba(100,180,255,0.2);
+}
+
+.app-desc {
+	font-size: 13px;
+	color: rgba(255,255,255,0.35);
+	margin: 0 0 12px;
+	line-height: 1.5;
+}
+
+.app-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.app-btn {
+	padding: 8px 18px;
+	border-radius: 6px;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: opacity 0.15s;
+	border: none;
+}
+
+.app-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.app-btn.connect {
+	background: #FC4C02;
+	color: #fff;
+}
+
+.app-btn.connect:hover:not(:disabled) {
+	opacity: 0.85;
+}
+
+.app-btn.sync {
+	background: rgba(255,255,255,0.08);
+	color: rgba(255,255,255,0.7);
+	border: 1px solid #2a2a2a;
+}
+
+.app-btn.sync:hover:not(:disabled) {
+	background: rgba(255,255,255,0.12);
+}
+
+.log-header {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 20px 24px 16px;
+	border-bottom: 1px solid #1e1e1e;
+	flex-shrink: 0;
+}
+
+.log-header h1 {
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.15em;
+	color: rgba(255,255,255,0.4);
+	margin: 0;
+}
+
+.log-back {
+	background: none;
+	border: none;
+	color: rgba(255,255,255,0.4);
+	font-size: 13px;
+	cursor: pointer;
+	padding: 0;
+	transition: color 0.15s;
+}
+
+.log-back:hover {
+	color: #ff3c00;
+}
+
+.log-error {
+	background: rgba(255,60,0,0.1);
+	border: 1px solid rgba(255,60,0,0.3);
+	color: #ff6b3d;
+	padding: 10px 24px;
+	font-size: 13px;
+}
+
+.log-success {
+	background: rgba(0,200,100,0.1);
+	border: 1px solid rgba(0,200,100,0.3);
+	color: #00c864;
+	padding: 10px 24px;
+	font-size: 13px;
+}
+
+.log-form {
+	max-width: 560px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 24px;
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+}
+
+.log-section {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.log-label {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	color: rgba(255,255,255,0.35);
+}
+
+.optional {
+	font-weight: 400;
+	color: rgba(255,255,255,0.2);
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+/* type chips */
+.type-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.type-chip {
+	padding: 8px 16px;
+	border-radius: 20px;
+	border: 1px solid #2a2a2a;
+	background: #111;
+	color: rgba(255,255,255,0.5);
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.type-chip:hover:not(.active) {
+	border-color: rgba(255,60,0,0.3);
+	color: rgba(255,255,255,0.8);
+}
+
+.type-chip.active {
+	background: #ff3c00;
+	border-color: #ff3c00;
+	color: #fff;
+}
+
+/* inputs */
+.log-input {
+	width: 100%;
+	background: #111;
+	border: 1px solid #2a2a2a;
+	color: #fff;
+	padding: 11px 14px;
+	border-radius: 8px;
+	font-size: 14px;
+	outline: none;
+	transition: border-color 0.15s;
+	box-sizing: border-box;
+}
+
+.log-input:focus {
+	border-color: #ff3c00;
+}
+
+.log-input::placeholder {
+	color: rgba(255,255,255,0.2);
+}
+
+/* datetime-local dark fix */
+.log-input[type='datetime-local']::-webkit-calendar-picker-indicator {
+	filter: invert(0.5);
+	cursor: pointer;
+}
+
+.log-textarea {
+	resize: vertical;
+	min-height: 80px;
+}
+
+/* stats grid */
+.stats-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.stat-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.stat-label {
+	font-size: 11px;
+	color: rgba(255,255,255,0.4);
+}
+
+.req {
+	color: #ff3c00;
+	margin-left: 2px;
+}
+
+.stat-input-wrap {
+	position: relative;
+}
+
+.stat-input-wrap .log-input {
+	padding-right: 44px;
+}
+
+.stat-unit {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 11px;
+	color: rgba(255,255,255,0.25);
+	pointer-events: none;
+}
+
+/* submit */
+.log-submit {
+	width: 100%;
+	padding: 14px;
+	background: #ff3c00;
+	color: #fff;
+	border: none;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+
+.log-submit:hover:not(:disabled) {
+	opacity: 0.85;
+}
+
+.log-submit:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}

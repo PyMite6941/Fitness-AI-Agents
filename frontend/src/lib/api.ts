@@ -52,4 +52,19 @@ export const api = {
 
 	getRoute: (token: string, id: string) =>
 		request(`/routes/${id}`, token),
+
+	logWorkout: (token: string, workout: object) =>
+		request('/watch/sync', token, {
+			method: 'POST',
+			body: JSON.stringify({ workouts: [workout] }),
+		}),
+
+	getIntegrationStatus: (token: string) =>
+		request('/integrations/status', token),
+
+	stravaConnectUrl: (token: string) =>
+		request('/integrations/strava/connect', token),
+
+	stravaSync: (token: string) =>
+		request('/integrations/strava/sync', token, { method: 'POST' }),
 };
