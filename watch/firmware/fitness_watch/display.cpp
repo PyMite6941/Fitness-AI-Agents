@@ -2,6 +2,7 @@
 #include "config.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <cstring>
 
 static Adafruit_SSD1306 _oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
 static DisplayMode _mode = MODE_CLOCK;
@@ -55,7 +56,9 @@ static void _draw_hr(float hr, bool valid) {
 static void _draw_steps(int steps) {
     _oled.setTextSize(3);
     _oled.setCursor(4, 18);
-    _oled.printf("%5d", steps);
+    // Cap display at 99999 — higher values compress to "100k+"
+    if (steps <= 99999) _oled.printf("%5d", steps);
+    else                _oled.print("100k+");
     _oled.setTextSize(1);
     _oled.setCursor(4, 56);
     _oled.print("STEPS");

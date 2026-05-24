@@ -12,5 +12,5 @@ struct SensorData {
 
 bool     sensors_init();
 void     sensors_update();          // call every SENSOR_INTERVAL_MS
-SensorData sensors_get();
+const SensorData& sensors_get();
 void     sensors_reset_steps();
