@@ -54,6 +54,9 @@ CREATE TABLE routes (
 
 CREATE INDEX idx_routes_user_time ON routes (user_id, started_at DESC);
 
+-- Migration: run this if watch_data table already exists
+-- ALTER TABLE watch_data ADD COLUMN IF NOT EXISTS ending_heart_rate FLOAT;
+
 CREATE TABLE user_integrations (
     id             UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id        TEXT        NOT NULL,

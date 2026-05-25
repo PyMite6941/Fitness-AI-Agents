@@ -21,6 +21,7 @@ class WorkoutSession(BaseModel):
     duration_minutes: float
     avg_heart_rate: Optional[float] = None
     max_heart_rate: Optional[float] = None
+    ending_heart_rate: Optional[float] = None   # BPM at end/cool-down
     calories_burned: Optional[float] = None
     distance_meters: Optional[float] = None
     notes: Optional[str] = None

@@ -394,3 +394,162 @@
 	opacity: 0.4;
 	cursor: not-allowed;
 }
+
+/* ── Route section ─────────────────────────────────────────── */
+.route-mode-tabs {
+	display: flex;
+	gap: 4px;
+	background: #1a1a1a;
+	padding: 4px;
+	border-radius: 8px;
+	width: fit-content;
+}
+
+.route-mode-tabs button {
+	padding: 6px 14px;
+	border-radius: 6px;
+	border: none;
+	background: transparent;
+	color: rgba(255,255,255,0.4);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.route-mode-tabs button.active {
+	background: #ff3c00;
+	color: #fff;
+}
+
+.route-mode-tabs button:hover:not(.active) {
+	color: rgba(255,255,255,0.8);
+}
+
+.route-draw-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 10px;
+}
+
+.route-hint {
+	font-size: 12px;
+	color: rgba(255,255,255,0.3);
+	margin: 0;
+}
+
+.route-map-container {
+	height: 280px;
+	border-radius: 8px;
+	overflow: hidden;
+	border: 1px solid #2a2a2a;
+}
+
+.route-info {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 13px;
+	color: rgba(255,255,255,0.5);
+	padding: 4px 0;
+}
+
+.route-clear {
+	background: none;
+	border: 1px solid #2a2a2a;
+	color: rgba(255,255,255,0.3);
+	padding: 4px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	cursor: pointer;
+	margin-left: auto;
+	transition: all 0.15s;
+}
+
+.route-clear:hover {
+	border-color: rgba(255,60,0,0.4);
+	color: #ff3c00;
+}
+
+/* GPX upload */
+.gpx-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 10px;
+}
+
+.gpx-label {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	cursor: pointer;
+}
+
+.gpx-label span {
+	font-size: 13px;
+	color: rgba(255,255,255,0.4);
+}
+
+.gpx-input {
+	background: #111;
+	border: 1px dashed #2a2a2a;
+	border-radius: 8px;
+	padding: 16px;
+	color: rgba(255,255,255,0.5);
+	font-size: 13px;
+	cursor: pointer;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.gpx-input:hover {
+	border-color: rgba(255,60,0,0.4);
+}
+
+.gpx-loaded {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 13px;
+	color: #00c864;
+}
+
+/* Sync result */
+.sync-result {
+	font-size: 12px;
+	color: rgba(255,255,255,0.35);
+	margin: 0 0 8px;
+}
+
+/* Strava import info */
+.strava-import-info {
+	margin-top: 24px;
+	background: #111;
+	border: 1px solid #1e1e1e;
+	border-radius: 10px;
+	padding: 16px 20px;
+}
+
+.import-info-title {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	color: rgba(255,255,255,0.3);
+	margin: 0 0 10px;
+}
+
+.strava-import-info ul {
+	margin: 0;
+	padding-left: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.strava-import-info li {
+	font-size: 13px;
+	color: rgba(255,255,255,0.45);
+	line-height: 1.4;
+}
