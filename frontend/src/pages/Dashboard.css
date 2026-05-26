@@ -625,6 +625,127 @@
 	border-left: 2px solid #2a2a2a;
 }
 
+/* ── ANALYSIS RICH OUTPUT ── */
+.quality-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.quality-score {
+	font-size: 13px;
+	font-weight: 800;
+	padding: 4px 10px;
+	border-radius: 4px;
+	background: rgba(255,255,255,0.05);
+	color: rgba(255,255,255,0.5);
+	letter-spacing: 0.5px;
+}
+
+.quality-score[data-score="8"],
+.quality-score[data-score="9"],
+.quality-score[data-score="10"] { background: rgba(34,197,94,0.12); color: #4ade80; }
+
+.quality-score[data-score="5"],
+.quality-score[data-score="6"],
+.quality-score[data-score="7"] { background: rgba(245,158,11,0.12); color: #fbbf24; }
+
+.quality-score[data-score="1"],
+.quality-score[data-score="2"],
+.quality-score[data-score="3"],
+.quality-score[data-score="4"] { background: rgba(239,68,68,0.12); color: #f87171; }
+
+.quality-verdict {
+	font-size: 12px;
+	color: rgba(255,255,255,0.3);
+	line-height: 1.5;
+}
+
+.result-metrics {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 28px;
+}
+
+.result-metric-card {
+	background: #0d0d0d;
+	border: 1px solid #1e1e1e;
+	padding: 14px 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 110px;
+}
+
+.rm-value {
+	font-size: 22px;
+	font-weight: 900;
+	color: #fff;
+	letter-spacing: -0.5px;
+	line-height: 1;
+}
+
+.rm-unit {
+	font-size: 11px;
+	font-weight: 500;
+	color: rgba(255,255,255,0.3);
+	margin-left: 3px;
+}
+
+.rm-change { font-size: 11px; font-weight: 700; }
+.rm-change.up { color: #4ade80; }
+.rm-change.down { color: #f87171; }
+
+.rm-label {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.5px;
+	color: rgba(255,255,255,0.3);
+	margin-top: 4px;
+}
+
+.rm-context {
+	font-size: 10px;
+	color: rgba(255,255,255,0.18);
+}
+
+.result-chart-wrap {
+	margin-bottom: 28px;
+}
+
+.result-chart-wrap .chart-wrap { height: 260px; }
+
+.result-table-wrap {
+	overflow-x: auto;
+	margin-bottom: 28px;
+}
+
+.result-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+}
+
+.result-table th {
+	text-align: left;
+	padding: 8px 12px;
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 2px;
+	color: rgba(255,255,255,0.25);
+	border-bottom: 1px solid #1e1e1e;
+}
+
+.result-table td {
+	padding: 10px 12px;
+	color: rgba(255,255,255,0.6);
+	border-bottom: 1px solid #141414;
+}
+
+.result-table tr:hover td { background: rgba(255,255,255,0.02); }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1200px) {
 	.week-row { grid-template-columns: repeat(2, 1fr); }

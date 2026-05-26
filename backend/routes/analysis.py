@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 import tempfile
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
@@ -39,24 +40,40 @@ async def run_analysis(request: AnalysisRequest, user_id: str = Depends(get_user
 
     try:
         bots = Bots(context=request.context)
-        bots.create_agents()
-        bots.create_tasks()
-        bots.create_crew(data=tmp_path)
-        report = bots.crew.tasks[-1].output.raw
+        raw_json = bots.create_crew(data=tmp_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     finally:
-        os.unlink(tmp_path)
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+    # Parse the structured FormattedOutput returned by bots.create_crew()
+    parsed: dict = {}
+    try:
+        parsed = json.loads(raw_json)
+    except Exception:
+        parsed = {}
 
     record = {
         "user_id": user_id,
         "context": request.context,
-        "summary": report,
-        "key_findings": [],
-        "anomalies": [],
-        "recommendations": [],
+        "summary": parsed.get("summary") or raw_json,
+        "key_findings": parsed.get("findings") or [],
+        "recommendations": parsed.get("recommendations") or [],
+        "output_type": parsed.get("output_type"),
+        "chart_type": parsed.get("chart_type"),
+        "chart_title": parsed.get("chart_title"),
+        "data_points": parsed.get("data_points"),
+        "metrics": parsed.get("metrics"),
+        "table_headers": parsed.get("table_headers"),
+        "table_rows": parsed.get("table_rows"),
+        "quality_score": parsed.get("quality_score"),
+        "quality_verdict": parsed.get("quality_verdict"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    # Strip None values so Supabase doesn't reject unknown columns
+    record = {k: v for k, v in record.items() if v is not None}
 
     await db.table("analyses").insert(record).execute()
     return record

@@ -371,7 +371,67 @@ export default function Dashboard() {
 									{selected ? (
 										<>
 											<p className='result-question'>"{selected.context}"</p>
+											{selected.quality_score && (
+												<div className='quality-row'>
+													<span className='quality-score' data-score={selected.quality_score}>{selected.quality_score}/10</span>
+													{selected.quality_verdict && <span className='quality-verdict'>{selected.quality_verdict}</span>}
+												</div>
+											)}
 											<div className='result-summary'>{selected.summary}</div>
+
+											{/* Metrics output */}
+											{selected.output_type === 'metrics' && selected.metrics?.length > 0 && (
+												<div className='result-metrics'>
+													{selected.metrics.map((m, i) => (
+														<div className='result-metric-card' key={i}>
+															<span className='rm-value'>{m.value}{m.unit ? <span className='rm-unit'>{m.unit}</span> : null}</span>
+															{m.change && <span className={`rm-change ${m.trend === 'up' ? 'up' : m.trend === 'down' ? 'down' : ''}`}>{m.change}</span>}
+															<span className='rm-label'>{m.label}</span>
+															{m.context && <span className='rm-context'>{m.context}</span>}
+														</div>
+													))}
+												</div>
+											)}
+
+											{/* Chart output */}
+											{selected.output_type === 'chart' && selected.data_points?.length > 0 && (
+												<div className='result-chart-wrap'>
+													{selected.chart_title && <p className='chart-title'>{selected.chart_title.toUpperCase()}</p>}
+													<div className='chart-wrap'>
+														{(selected.chart_type === 'bar' || !selected.chart_type) && (
+															<Bar
+																data={{ labels: selected.data_points.map(d => d.label), datasets: [{ label: selected.chart_title || 'Value', data: selected.data_points.map(d => d.value), backgroundColor: ORANGE, borderRadius: 3 }] }}
+																options={chartDefaults}
+															/>
+														)}
+														{selected.chart_type === 'line' && (
+															<Line
+																data={{ labels: selected.data_points.map(d => d.label), datasets: [lineDs(selected.chart_title || 'Value', selected.data_points.map(d => d.value))] }}
+																options={chartDefaults}
+															/>
+														)}
+														{selected.chart_type === 'pie' && (
+															<Doughnut
+																data={{ labels: selected.data_points.map(d => d.label), datasets: [{ data: selected.data_points.map(d => d.value), backgroundColor: TYPE_COLORS, borderWidth: 0 }] }}
+																options={doughnutOpts}
+															/>
+														)}
+													</div>
+												</div>
+											)}
+
+											{/* Table output */}
+											{selected.output_type === 'table' && selected.table_headers?.length > 0 && (
+												<div className='result-table-wrap'>
+													<table className='result-table'>
+														<thead><tr>{selected.table_headers.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
+														<tbody>{(selected.table_rows || []).map((row, i) => (
+															<tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>
+														))}</tbody>
+													</table>
+												</div>
+											)}
+
 											{selected.key_findings?.length > 0 && (
 												<div className='result-section'>
 													<h3>KEY FINDINGS</h3>
