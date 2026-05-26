@@ -38,6 +38,17 @@ CREATE TABLE analyses (
 
 CREATE INDEX idx_analyses_user_time ON analyses (user_id, created_at DESC);
 
+-- Migration: run if analyses table already exists
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS output_type    TEXT;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS chart_type     TEXT;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS chart_title    TEXT;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS data_points    JSONB;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS metrics        JSONB;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS table_headers  JSONB;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS table_rows     JSONB;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS quality_score  INTEGER;
+-- ALTER TABLE analyses ADD COLUMN IF NOT EXISTS quality_verdict TEXT;
+
 CREATE TABLE routes (
     id               UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id          TEXT        NOT NULL,
