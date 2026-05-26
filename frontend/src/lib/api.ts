@@ -20,6 +20,9 @@ export const api = {
 	getMe: (token: string) =>
 		request('/user/me', token),
 
+	getSummary: (token: string) =>
+		request('/user/summary', token),
+
 	getHistory: (token: string, limit = 20) =>
 		request(`/user/history?limit=${limit}`, token),
 
