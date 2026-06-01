@@ -6,7 +6,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 bearer = HTTPBearer()
 
-CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL")
+CLERK_JWKS_URL    = os.getenv("CLERK_JWKS_URL")
+CLERK_ISSUER_URL  = os.getenv("CLERK_ISSUER_URL", "")  # e.g. https://pretty-bird-74.clerk.accounts.dev
 
 _jwks_client: PyJWKClient | None = None
 
@@ -22,12 +23,13 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Security(bear
     token = credentials.credentials
     try:
         signing_key = get_jwks_client().get_signing_key_from_jwt(token)
-        payload = jwt.decode(
-            token,
-            signing_key.key,
-            algorithms=["RS256"],
-            options={"verify_aud": False},
-        )
+        decode_kwargs: dict = {
+            "algorithms": ["RS256"],
+            "options": {"verify_aud": False},
+        }
+        if CLERK_ISSUER_URL:
+            decode_kwargs["issuer"] = CLERK_ISSUER_URL
+        payload = jwt.decode(token, signing_key.key, **decode_kwargs)
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")

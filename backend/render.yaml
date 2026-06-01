@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: fitness-ai-agents-api
+    runtime: python
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Supabase — project Settings → API
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+
+      # Clerk — Dashboard → API Keys
+      - key: CLERK_JWKS_URL
+        sync: false
+      - key: CLERK_ISSUER_URL
+        sync: false
+
+      # CORS — comma-separated list of allowed frontend origins
+      # e.g. https://your-app.vercel.app,http://localhost:5173
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+      # OAuth CSRF — run: openssl rand -hex 32
+      - key: OAUTH_STATE_SECRET
+        sync: false
+
+      # URLs — set to your Render service URL and Vercel frontend URL
+      - key: BACKEND_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+      # Strava — register at https://www.strava.com/settings/api
+      - key: STRAVA_CLIENT_ID
+        sync: false
+      - key: STRAVA_CLIENT_SECRET
+        sync: false
+
+      # AI model providers — at least one required for analysis to work
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false

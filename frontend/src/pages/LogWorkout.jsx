@@ -30,11 +30,12 @@ const STAT_FIELDS = [
 ];
 
 const APPS = [
-	{ id: 'strava',       name: 'Strava',        desc: 'Sync runs, rides, and GPS routes automatically.',    color: '#FC4C02', status: 'available' },
-	{ id: 'apple_health', name: 'Apple Health',  desc: 'Requires the iOS companion app.',                   color: '#fff',    status: 'ios_only' },
-	{ id: 'google_fit',   name: 'Google Fit',    desc: 'Coming soon.',                                      color: '#4285F4', status: 'soon' },
-	{ id: 'garmin',       name: 'Garmin Connect',desc: 'Coming soon.',                                      color: '#007CC3', status: 'soon' },
-	{ id: 'fitbit',       name: 'Fitbit',        desc: 'Coming soon.',                                      color: '#00B0B9', status: 'soon' },
+	{ id: 'strava',        name: 'Strava',         desc: 'Sync runs, rides, and GPS routes automatically.',                                                                   color: '#FC4C02', status: 'available' },
+	{ id: 'fitbit',        name: 'Fitbit',          desc: 'Connect your Fitbit account to sync workouts and sleep automatically.',                                             color: '#00B0B9', status: 'oauth'     },
+	{ id: 'nike_run_club', name: 'Nike Run Club',   desc: 'Import your NRC data export (ZIP or JSON) — includes dates, GPS, HR, and distance.',                               color: '#111',    status: 'import'   },
+	{ id: 'garmin',        name: 'Garmin Connect',  desc: 'Export any activity from Garmin Connect as .gpx or .tcx and upload it here.',                                      color: '#007CC3', status: 'import'   },
+	{ id: 'apple_health',  name: 'Apple Health',    desc: 'Export from Health app → Profile → Export All Health Data. Upload the ZIP or export.xml.',                         color: '#fff',    status: 'import'   },
+	{ id: 'google_fit',    name: 'Google Fit',      desc: 'Export via takeout.google.com (select Fit only). Upload the downloaded ZIP.',                                      color: '#4285F4', status: 'import'   },
 ];
 
 function localNow() {
@@ -91,8 +92,13 @@ export default function LogWorkout() {
 	const [error, setError]         = useState('');
 	const [success, setSuccess]     = useState('');
 	const [integrations, setIntegrations] = useState({});
-	const [syncing, setSyncing]     = useState(null);
+	const [syncing, setSyncing]       = useState(null);
 	const [syncResult, setSyncResult] = useState(null);
+	const [nikeResult,    setNikeResult]    = useState(null);
+	const [fitbitResult,  setFitbitResult]  = useState(null);
+	const [garminResult,  setGarminResult]  = useState(null);
+	const [appleResult,   setAppleResult]   = useState(null);
+	const [googleResult,  setGoogleResult]  = useState(null);
 
 	// Route state
 	const [routeMode, setRouteMode] = useState('none');  // 'none' | 'draw' | 'gpx'
@@ -148,13 +154,22 @@ export default function LogWorkout() {
 		setFields(prev => ({ ...prev, [key]: val }));
 	}
 
+	// datetime-local gives "YYYY-MM-DDTHH:mm" in local time — append offset so toISOString() is correct
+	function localToISO(localStr) {
+		const d = new Date(localStr);
+		const off = -d.getTimezoneOffset();
+		const sign = off >= 0 ? '+' : '-';
+		const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+		return `${localStr}:00${sign}${pad(off / 60)}:${pad(off % 60)}`;
+	}
+
 	async function handleSubmit(e) {
 		e.preventDefault();
 		setError('');
 		setSaving(true);
 		try {
 			const token = await getToken();
-			const startISO = new Date(datetime).toISOString();
+			const startISO = localToISO(datetime);
 
 			// Build workout payload
 			const workout = {
@@ -164,7 +179,8 @@ export default function LogWorkout() {
 			};
 			for (const { key } of STAT_FIELDS) {
 				if (fields[key] !== undefined && fields[key] !== '') {
-					workout[key] = parseFloat(fields[key]);
+					const val = parseFloat(fields[key]);
+					if (!isNaN(val)) workout[key] = val;
 				}
 			}
 			await api.logWorkout(token, workout);
@@ -196,6 +212,91 @@ export default function LogWorkout() {
 			const { url } = await api.stravaConnectUrl(token);
 			window.location.href = url;
 		} catch (e) { setError(e.message); }
+	}
+
+	async function connectFitbit() {
+		try {
+			const token = await getToken();
+			const { url } = await api.fitbitConnectUrl(token);
+			window.location.href = url;
+		} catch (e) { setError(e.message); }
+	}
+
+	async function syncFitbit() {
+		setSyncing('fitbit');
+		setFitbitResult(null);
+		setError('');
+		try {
+			const token = await getToken();
+			const res = await api.fitbitSync(token);
+			setFitbitResult(res);
+			setSuccess(`Synced ${res.synced} workout${res.synced !== 1 ? 's' : ''} and ${res.sleep_synced} sleep log${res.sleep_synced !== 1 ? 's' : ''} from Fitbit.`);
+		} catch (e) { setError(e.message); }
+		finally { setSyncing(null); }
+	}
+
+	async function handleGarminImport(e) {
+		const file = e.target.files[0];
+		if (!file) return;
+		setSyncing('garmin');
+		setGarminResult(null);
+		setError('');
+		try {
+			const token = await getToken();
+			const res = await api.garminImport(token, file);
+			if (res.error) { setError(`Garmin import error: ${res.error}`); return; }
+			setGarminResult(res);
+			setSuccess(`Imported ${res.imported} workout${res.imported !== 1 ? 's' : ''} and ${res.routes_saved} route${res.routes_saved !== 1 ? 's' : ''} from Garmin.`);
+		} catch (e) { setError(e.message); }
+		finally { setSyncing(null); e.target.value = ''; }
+	}
+
+	async function handleAppleImport(e) {
+		const file = e.target.files[0];
+		if (!file) return;
+		setSyncing('apple_health');
+		setAppleResult(null);
+		setError('');
+		try {
+			const token = await getToken();
+			const res = await api.appleImport(token, file);
+			if (res.error) { setError(`Apple Health import error: ${res.error}`); return; }
+			setAppleResult(res);
+			setSuccess(`Imported ${res.imported} workout${res.imported !== 1 ? 's' : ''} and ${res.readings_synced} health reading${res.readings_synced !== 1 ? 's' : ''} from Apple Health.`);
+		} catch (e) { setError(e.message); }
+		finally { setSyncing(null); e.target.value = ''; }
+	}
+
+	async function handleGoogleFitImport(e) {
+		const file = e.target.files[0];
+		if (!file) return;
+		setSyncing('google_fit');
+		setGoogleResult(null);
+		setError('');
+		try {
+			const token = await getToken();
+			const res = await api.googleFitImport(token, file);
+			if (res.error) { setError(`Google Fit import error: ${res.error}`); return; }
+			setGoogleResult(res);
+			setSuccess(`Imported ${res.imported} workout${res.imported !== 1 ? 's' : ''} and ${res.readings_synced} daily reading${res.readings_synced !== 1 ? 's' : ''} from Google Fit.`);
+		} catch (e) { setError(e.message); }
+		finally { setSyncing(null); e.target.value = ''; }
+	}
+
+	async function handleNikeImport(e) {
+		const file = e.target.files[0];
+		if (!file) return;
+		setSyncing('nike_run_club');
+		setNikeResult(null);
+		setError('');
+		try {
+			const token = await getToken();
+			const res = await api.nikeImport(token, file);
+			if (res.error) { setError(`Nike import error: ${res.error}`); return; }
+			setNikeResult(res);
+			setSuccess(`Imported ${res.imported} workout${res.imported !== 1 ? 's' : ''} and ${res.routes_saved} route${res.routes_saved !== 1 ? 's' : ''} from Nike Run Club.`);
+		} catch (e) { setError(e.message); }
+		finally { setSyncing(null); e.target.value = ''; }
 	}
 
 	async function syncStrava() {
@@ -352,34 +453,73 @@ export default function LogWorkout() {
 					<div className='app-grid'>
 						{APPS.map(app => {
 							const isConnected = integrations[app.id];
+							const busy = syncing === app.id;
+
+							// Per-app last-result display
+							const resultMap = {
+								strava:        syncResult   ? `Last sync: ${syncResult.synced} workouts, ${syncResult.routes_saved} routes` : null,
+								fitbit:        fitbitResult ? `Last sync: ${fitbitResult.synced} workouts, ${fitbitResult.sleep_synced} sleep logs` : null,
+								nike_run_club: nikeResult   ? `Last import: ${nikeResult.imported} workouts, ${nikeResult.routes_saved} routes` : null,
+								garmin:        garminResult ? `Last import: ${garminResult.imported} workouts, ${garminResult.routes_saved} routes` : null,
+								apple_health:  appleResult  ? `Last import: ${appleResult.imported} workouts, ${appleResult.readings_synced} readings` : null,
+								google_fit:    googleResult ? `Last import: ${googleResult.imported} workouts, ${googleResult.readings_synced} readings` : null,
+							};
+
+							// Per-app file accept & handler
+							const importConfig = {
+								nike_run_club: { accept: '.zip,.json', handler: handleNikeImport },
+								garmin:        { accept: '.gpx,.tcx',  handler: handleGarminImport },
+								apple_health:  { accept: '.zip,.xml',  handler: handleAppleImport },
+								google_fit:    { accept: '.zip',       handler: handleGoogleFitImport },
+							};
+
 							return (
-								<div key={app.id} className={`app-card ${app.status === 'soon' ? 'soon' : ''}`}>
+								<div key={app.id} className='app-card'>
 									<div className='app-card-top'>
 										<div className='app-dot' style={{ background: app.color }} />
 										<span className='app-name'>{app.name}</span>
-										{isConnected     && <span className='app-badge connected'>Connected</span>}
-										{app.status === 'soon'     && <span className='app-badge soon'>Soon</span>}
-										{app.status === 'ios_only' && <span className='app-badge ios'>iOS Only</span>}
+										{isConnected && <span className='app-badge connected'>Connected</span>}
 									</div>
 									<p className='app-desc'>{app.desc}</p>
 
-									{app.id === 'strava' && isConnected && syncResult && (
-										<p className='sync-result'>
-											Last sync: {syncResult.synced} workout{syncResult.synced !== 1 ? 's' : ''}, {syncResult.routes_saved} route{syncResult.routes_saved !== 1 ? 's' : ''}
-										</p>
+									{resultMap[app.id] && (
+										<p className='sync-result'>{resultMap[app.id]}</p>
 									)}
 
+									{/* Strava — OAuth + sync */}
 									{app.status === 'available' && (
 										<div className='app-actions'>
-											{isConnected ? (
-												<button className='app-btn sync' onClick={syncStrava} disabled={syncing === app.id}>
-													{syncing === app.id ? 'Syncing...' : 'Sync Now'}
-												</button>
-											) : (
-												<button className='app-btn connect' onClick={connectStrava}>Connect Strava</button>
-											)}
+											{isConnected
+												? <button className='app-btn sync' onClick={syncStrava} disabled={busy}>{busy ? 'Syncing…' : 'Sync Now'}</button>
+												: <button className='app-btn connect' onClick={connectStrava}>Connect Strava</button>
+											}
 										</div>
 									)}
+
+									{/* Fitbit — OAuth + sync */}
+									{app.status === 'oauth' && (
+										<div className='app-actions'>
+											{isConnected
+												? <button className='app-btn sync' onClick={syncFitbit} disabled={busy}>{busy ? 'Syncing…' : 'Sync Now'}</button>
+												: <button className='app-btn connect' onClick={connectFitbit}>Connect Fitbit</button>
+											}
+										</div>
+									)}
+
+									{/* File-import platforms */}
+									{app.status === 'import' && (() => {
+										const cfg = importConfig[app.id];
+										if (!cfg) return null;
+										return (
+											<div className='app-actions'>
+												<label className={`app-btn sync${busy ? ' disabled' : ''}`} style={{ cursor: busy ? 'not-allowed' : 'pointer' }}>
+													{busy ? 'Importing…' : 'Upload Export'}
+													<input type='file' accept={cfg.accept} style={{ display: 'none' }}
+														disabled={busy} onChange={cfg.handler} />
+												</label>
+											</div>
+										);
+									})()}
 								</div>
 							);
 						})}
@@ -392,6 +532,24 @@ export default function LogWorkout() {
 							<li>GPS route with per-second coordinates → saved to Routes page</li>
 							<li>Heart rate stream including ending BPM</li>
 							<li>Distance, moving time, calories, avg + max HR</li>
+							<li>Activity name as notes</li>
+						</ul>
+					</div>
+
+					<div className='strava-import-info' style={{ marginTop: '1rem' }}>
+						<p className='import-info-title'>HOW TO EXPORT NIKE RUN CLUB DATA</p>
+						<ol style={{ paddingLeft: '1.2rem', lineHeight: '1.8' }}>
+							<li>Open the Nike app → Profile → Settings → Privacy Settings</li>
+							<li>Tap <strong>Download Your Data</strong> and request the export</li>
+							<li>Nike emails you a ZIP file — download it</li>
+							<li>Upload the ZIP (or any activity JSON from inside it) using the button above</li>
+						</ol>
+						<p className='import-info-title' style={{ marginTop: '0.75rem' }}>WHAT NRC IMPORTS</p>
+						<ul>
+							<li>All runs, walks, hikes, and cycle activities with original dates</li>
+							<li>GPS coordinates per data point → saved to Routes page</li>
+							<li>Heart rate (avg, max, ending) from wearable data</li>
+							<li>Distance (km), duration, and calories</li>
 							<li>Activity name as notes</li>
 						</ul>
 					</div>

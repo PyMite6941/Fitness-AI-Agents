@@ -42,10 +42,9 @@ def calc_distance(coords: list[Coordinate]) -> float:
 
 
 def calc_duration(started_at: str, ended_at: str) -> int:
-    fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
     try:
-        start = datetime.strptime(started_at.replace("Z", ".000000Z"), fmt)
-        end = datetime.strptime(ended_at.replace("Z", ".000000Z"), fmt)
+        start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        end   = datetime.fromisoformat(ended_at.replace("Z", "+00:00"))
         return max(0, int((end - start).total_seconds()))
     except Exception:
         return 0
@@ -85,6 +84,8 @@ async def save_route(payload: RoutePayload, user_id: str = Depends(get_user_id))
     }
 
     result = await db.table("routes").insert(record).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Route insert failed")
     return result.data[0]
 
 

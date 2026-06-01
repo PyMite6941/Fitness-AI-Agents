@@ -1,6 +1,7 @@
-import os
+import asyncio
 import csv
 import json
+import os
 import tempfile
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime, timezone
@@ -40,7 +41,8 @@ async def run_analysis(request: AnalysisRequest, user_id: str = Depends(get_user
 
     try:
         bots = Bots(context=request.context)
-        raw_json = bots.create_crew(data=tmp_path)
+        loop = asyncio.get_running_loop()
+        raw_json = await loop.run_in_executor(None, lambda: bots.create_crew(data=tmp_path))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     finally:
@@ -69,10 +71,15 @@ async def run_analysis(request: AnalysisRequest, user_id: str = Depends(get_user
         "table_rows": parsed.get("table_rows"),
         "quality_score": parsed.get("quality_score"),
         "quality_verdict": parsed.get("quality_verdict"),
+        "raw_output": parsed or None,   # full payload — lets frontend render comparison/heatmap/code
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    # Strip None values so Supabase doesn't reject unknown columns
+    # output_type must always be present so the frontend can pick the right renderer
+    if not record.get("output_type"):
+        record["output_type"] = "report"
+
+    # Strip remaining None values so Supabase doesn't complain about unknown columns
     record = {k: v for k, v in record.items() if v is not None}
 
     await db.table("analyses").insert(record).execute()

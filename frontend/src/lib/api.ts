@@ -67,7 +67,32 @@ export const api = {
 
 	stravaConnectUrl: (token: string) =>
 		request('/integrations/strava/connect', token),
-
 	stravaSync: (token: string) =>
 		request('/integrations/strava/sync', token, { method: 'POST' }),
+
+	fitbitConnectUrl: (token: string) =>
+		request('/integrations/fitbit/connect', token),
+	fitbitSync: (token: string) =>
+		request('/integrations/fitbit/sync', token, { method: 'POST' }),
+
+	nikeImport:    (token: string, file: File) => _fileUpload(token, '/integrations/nike/import',    file),
+	garminImport:  (token: string, file: File) => _fileUpload(token, '/integrations/garmin/import',  file),
+	appleImport:   (token: string, file: File) => _fileUpload(token, '/integrations/apple/import',   file),
+	googleFitImport: (token: string, file: File) => _fileUpload(token, '/integrations/google/import', file),
 };
+
+function _fileUpload(token: string, path: string, file: File) {
+	const form = new FormData();
+	form.append('file', file);
+	return fetch(`${API_URL}${path}`, {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${token}` },
+		body: form,
+	}).then(async res => {
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+			throw new Error(err.detail || 'Request failed');
+		}
+		return res.json();
+	});
+}

@@ -36,4 +36,4 @@ async def sync_watch_data(payload: WatchSyncPayload, user_id: str = Depends(get_
             row["timestamp"] = row["timestamp"].isoformat()
 
     await db.table("watch_data").insert(rows).execute()
-    return {"synced": len(rows), "user_id": user_id}
+    return {"synced": len(rows)}

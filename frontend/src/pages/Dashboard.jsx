@@ -5,12 +5,13 @@ import {
 	Chart as ChartJS,
 	CategoryScale, LinearScale, PointElement, LineElement,
 	BarElement, ArcElement, Tooltip, Legend, Filler,
+	RadialLinearScale, ScatterController,
 } from 'chart.js';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { Line, Bar, Doughnut, Scatter, Radar } from 'react-chartjs-2';
 import { api } from '../lib/api';
 import './Dashboard.css';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler, RadialLinearScale, ScatterController);
 
 const ORANGE       = '#ff3c00';
 const ORANGE_DIM   = 'rgba(255,60,0,0.12)';
@@ -398,7 +399,7 @@ export default function Dashboard() {
 												<div className='result-chart-wrap'>
 													{selected.chart_title && <p className='chart-title'>{selected.chart_title.toUpperCase()}</p>}
 													<div className='chart-wrap'>
-														{(selected.chart_type === 'bar' || !selected.chart_type) && (
+														{(selected.chart_type === 'bar' || selected.chart_type === 'funnel' || !selected.chart_type) && (
 															<Bar
 																data={{ labels: selected.data_points.map(d => d.label), datasets: [{ label: selected.chart_title || 'Value', data: selected.data_points.map(d => d.value), backgroundColor: ORANGE, borderRadius: 3 }] }}
 																options={chartDefaults}
@@ -416,6 +417,28 @@ export default function Dashboard() {
 																options={doughnutOpts}
 															/>
 														)}
+														{selected.chart_type === 'scatter' && (
+															<Scatter
+																data={{ datasets: [{ label: selected.chart_title || 'Value', data: selected.data_points.map(d => ({ x: d.x_value ?? 0, y: d.value })), backgroundColor: ORANGE }] }}
+																options={chartDefaults}
+															/>
+														)}
+														{selected.chart_type === 'radar' && (() => {
+															const raw = selected.raw_output || {};
+															const hasB = selected.data_points.some(d => d.value2 != null);
+															return (
+																<Radar
+																	data={{
+																		labels: selected.data_points.map(d => d.label),
+																		datasets: [
+																			{ label: selected.chart_title || 'Series A', data: selected.data_points.map(d => d.value), borderColor: ORANGE, backgroundColor: ORANGE_DIM, pointBackgroundColor: ORANGE, borderWidth: 2 },
+																			...(hasB ? [{ label: raw.radar_b_label || 'Series B', data: selected.data_points.map(d => d.value2 || 0), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.10)', pointBackgroundColor: '#22c55e', borderWidth: 2 }] : []),
+																		],
+																	}}
+																	options={{ responsive: true, maintainAspectRatio: false, scales: { r: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.3)', backdropColor: 'transparent', font: { size: 10 } }, pointLabels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } } } }, plugins: { legend: { display: hasB, labels: { color: 'rgba(255,255,255,0.5)' } }, tooltip: chartDefaults.plugins.tooltip } }}
+																/>
+															);
+														})()}
 													</div>
 												</div>
 											)}
@@ -431,6 +454,77 @@ export default function Dashboard() {
 													</table>
 												</div>
 											)}
+
+											{/* Comparison output */}
+											{selected.output_type === 'comparison' && (() => {
+												const raw = selected.raw_output || {};
+												const rows = raw.comparison_rows || [];
+												if (!rows.length) return null;
+												const aLabel = raw.comparison_a_label || 'A';
+												const bLabel = raw.comparison_b_label || 'B';
+												return (
+													<div className='result-table-wrap'>
+														<table className='result-table'>
+															<thead><tr><th>Metric</th><th style={{color: ORANGE}}>{aLabel}</th><th style={{color:'#60a5fa'}}>{bLabel}</th><th>Winner</th></tr></thead>
+															<tbody>{rows.map((r, i) => (
+																<tr key={i}>
+																	<td>{r.metric}</td>
+																	<td style={r.winner === 'a' ? {color:'#22c55e', fontWeight:600} : {}}>{r.value_a}</td>
+																	<td style={r.winner === 'b' ? {color:'#22c55e', fontWeight:600} : {}}>{r.value_b}</td>
+																	<td style={{opacity:0.6}}>{r.winner === 'tie' ? 'Tie' : r.winner === 'a' ? aLabel : r.winner === 'b' ? bLabel : '—'}</td>
+																</tr>
+															))}</tbody>
+														</table>
+													</div>
+												);
+											})()}
+
+											{/* Heatmap output */}
+											{selected.output_type === 'heatmap' && (() => {
+												const raw = selected.raw_output || {};
+												const vals = raw.heatmap_values || [];
+												if (!vals.length) return null;
+												const flat = vals.flat();
+												const minV = Math.min(...flat), maxV = Math.max(...flat);
+												const norm = v => maxV === minV ? 0.5 : (v - minV) / (maxV - minV);
+												return (
+													<div className='result-table-wrap' style={{overflowX:'auto'}}>
+														{raw.heatmap_title && <p className='chart-title'>{raw.heatmap_title.toUpperCase()}</p>}
+														<table className='result-table'>
+															<thead><tr>
+																<th />
+																{(raw.heatmap_col_labels || []).map((c, i) => <th key={i}>{c}</th>)}
+															</tr></thead>
+															<tbody>{vals.map((row, ri) => (
+																<tr key={ri}>
+																	<td style={{opacity:0.6}}>{(raw.heatmap_row_labels || [])[ri] ?? ri}</td>
+																	{row.map((val, ci) => {
+																		const n = norm(val);
+																		return <td key={ci} style={{background:`rgba(255,60,0,${(n*0.8+0.05).toFixed(2)})`,color:n>0.5?'#fff':'rgba(255,255,255,0.5)',textAlign:'center',fontVariantNumeric:'tabular-nums',minWidth:'48px'}}>{typeof val==='number'?val.toFixed(1):val}</td>;
+																	})}
+																</tr>
+															))}</tbody>
+														</table>
+													</div>
+												);
+											})()}
+
+											{/* Code output */}
+											{selected.output_type === 'code' && (() => {
+												const raw = selected.raw_output || {};
+												const blocks = raw.code_blocks || [];
+												if (!blocks.length) return null;
+												return (
+													<div className='result-section'>
+														{blocks.map((block, i) => (
+															<div key={i} style={{marginBottom:'1.25rem'}}>
+																<p className='chart-title'>{block.title} <span style={{opacity:0.4,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.05em'}}>{block.language}</span></p>
+																<pre style={{background:'#111',border:'1px solid #2a2a2a',borderRadius:'6px',padding:'1rem',overflowX:'auto',fontSize:'12px',lineHeight:'1.7',color:'rgba(255,255,255,0.85)',margin:0}}><code>{block.code}</code></pre>
+															</div>
+														))}
+													</div>
+												);
+											})()}
 
 											{selected.key_findings?.length > 0 && (
 												<div className='result-section'>

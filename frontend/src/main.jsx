@@ -17,7 +17,10 @@ function ProtectedRoute({ children }) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ClerkProvider afterSignOutUrl="/" afterSignInUrl="/dashboard" afterSignUpUrl="/dashboard">
+    <ClerkProvider
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      afterSignOutUrl="/" afterSignInUrl="/dashboard" afterSignUpUrl="/dashboard"
+    >
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />
