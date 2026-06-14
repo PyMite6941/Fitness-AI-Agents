@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from auth import get_user_id
 from db import get_db
+from calories import estimate_calories
 import math
 
 router = APIRouter()
@@ -22,6 +23,15 @@ class RoutePayload(BaseModel):
     coordinates: list[Coordinate]
     started_at: str
     ended_at: str
+    # Sent by the watch so distance/pace/calories are all computed here, not on
+    # the device.
+    avg_heart_rate: Optional[float] = None
+    max_heart_rate: Optional[float] = None
+    # True when the client posts ONLY a route (no separate workout) — the watch
+    # and the web GPS tracker. Tells us to mirror a workout row into watch_data.
+    # Clients that post their own workout (manual entry, Strava/Nike/Garmin
+    # imports) leave this false so the workout isn't counted twice.
+    record_workout: bool = False
     notes: Optional[str] = None
 
 
@@ -69,6 +79,7 @@ async def save_route(payload: RoutePayload, user_id: str = Depends(get_user_id))
     distance = calc_distance(payload.coordinates)
     duration = calc_duration(payload.started_at, payload.ended_at)
     pace = calc_pace(distance, duration)
+    duration_min = round(duration / 60.0, 2)
 
     record = {
         "user_id": user_id,
@@ -86,6 +97,30 @@ async def save_route(payload: RoutePayload, user_id: str = Depends(get_user_id))
     result = await db.table("routes").insert(record).execute()
     if not result.data:
         raise HTTPException(status_code=500, detail="Route insert failed")
+
+    # Route-only clients (the watch, the web GPS tracker) ask us to also record
+    # the workout — distance, pace and calories all computed here, server-side,
+    # so the device doesn't have to. Clients that post their own workout leave
+    # record_workout false to avoid double-counting.
+    if payload.record_workout:
+        workout_row = {
+            "user_id":          user_id,
+            "type":             "workout",
+            "device":           "gps_route",
+            "timestamp":        payload.started_at,
+            "workout_type":     payload.workout_type,
+            "duration_minutes": duration_min,
+            "avg_heart_rate":   payload.avg_heart_rate,
+            "max_heart_rate":   payload.max_heart_rate,
+            "calories_burned":  estimate_calories(duration_min, payload.workout_type),
+            "distance_meters":  distance,
+        }
+        try:
+            await db.table("watch_data").insert(workout_row).execute()
+        except Exception as e:
+            # The route saved fine; don't fail the request if the mirror does.
+            print(f"[routes] workout mirror insert failed: {e}")
+
     return result.data[0]
 
 

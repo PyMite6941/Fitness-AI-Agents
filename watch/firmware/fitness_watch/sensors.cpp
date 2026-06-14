@@ -13,6 +13,7 @@ static SensorData _data = {};
 static const uint8_t RATE_SIZE = 4;
 static float _rates[RATE_SIZE] = {};
 static uint8_t _rateSpot = 0;
+static uint8_t _rateFilled = 0; // valid entries in _rates, saturates at RATE_SIZE
 static long _lastBeat = 0;      // 0 = never seen a beat yet
 static float _beatsPerMinute = 0;
 static float _beatAvg = 0;
@@ -63,29 +64,34 @@ void sensors_update() {
                 _beatsPerMinute = 60000.0f / delta;  // ms → BPM directly
 
                 if (_beatsPerMinute > 20.0f && _beatsPerMinute < 255.0f) {
-                    _rates[_rateSpot % RATE_SIZE] = _beatsPerMinute;
+                    _rates[_rateSpot] = _beatsPerMinute;
                     _rateSpot = (_rateSpot + 1) % RATE_SIZE;
+                    if (_rateFilled < RATE_SIZE) _rateFilled++;
 
-                    // Only average slots that have been filled
-                    uint8_t filled = (_rateSpot < RATE_SIZE) ? _rateSpot : RATE_SIZE;
+                    // Rolling average over the samples collected so far. (The old
+                    // code derived the count from _rateSpot, which is modulo
+                    // RATE_SIZE — so every 4th beat it averaged 0 slots and the
+                    // displayed BPM dropped to 0.)
                     float sum = 0;
-                    for (uint8_t i = 0; i < filled; i++) sum += _rates[i];
-                    _beatAvg = (filled > 0) ? sum / filled : 0;
+                    for (uint8_t i = 0; i < _rateFilled; i++) sum += _rates[i];
+                    _beatAvg = sum / _rateFilled;   // _rateFilled >= 1 here
                 }
             }
         }
-        _data.heart_rate  = _beatAvg;
-        _data.temperature = _max.readTemperature();
+        _data.heart_rate = _beatAvg;
+        // NB: _max.readTemperature() was called here every cycle (~29 ms of
+        // blocking I2C) but the value is never displayed or synced — dropped.
     } else {
         _data.heart_rate  = 0;
         _data.spo2        = 0;
         _data.temperature = 0;
         // Reset state so next finger placement starts fresh
         memset(_rates, 0, sizeof(_rates));
-        _rateSpot     = 0;
-        _beatAvg      = 0;
+        _rateSpot       = 0;
+        _rateFilled     = 0;
+        _beatAvg        = 0;
         _beatsPerMinute = 0;
-        _lastBeat     = 0;
+        _lastBeat       = 0;
     }
 
     // ── Step counting ──────────────────────────────────────────────────

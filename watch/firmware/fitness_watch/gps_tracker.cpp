@@ -8,7 +8,9 @@
 #include <cstring>
 
 static TinyGPSPlus    _gps;
-static HardwareSerial _gpsSerial(2);
+// UART1 — the ESP32-C3 only has UART0 and UART1 (no UART2). Pins are remapped
+// in gps_init() via the GPIO matrix, so any valid GPIO works.
+static HardwareSerial _gpsSerial(1);
 
 #define MAX_ROUTE_POINTS 500
 static GpsPoint _route[MAX_ROUTE_POINTS];
@@ -18,16 +20,24 @@ static float    _route_dist_m = 0;
 static char     _started_at[25] = {};
 static unsigned long _last_point_ms = 0;
 
-static double _haversine(double lat1, double lon1, double lat2, double lon2) {
+// Single-precision haversine. The ESP32-C3 has no hardware FPU, so float math
+// (and avoiding pow()) is markedly cheaper than double here. This only feeds the
+// live on-watch distance readout — the backend recomputes the authoritative
+// distance from the full coordinate list posted to /routes/.
+static float _haversine(double lat1, double lon1, double lat2, double lon2) {
     // Guard identical points — avoids asin(sqrt(0)) edge case
-    if (lat1 == lat2 && lon1 == lon2) return 0.0;
-    const double R = 6371000.0;
-    const double p = M_PI / 180.0;
-    double a = pow(sin((lat2 - lat1) * p / 2), 2)
-             + cos(lat1 * p) * cos(lat2 * p) * pow(sin((lon2 - lon1) * p / 2), 2);
-    // Clamp a to [0,1] to guard float precision overshoot
-    a = fmin(1.0, fmax(0.0, a));
-    return 2.0 * R * asin(sqrt(a));
+    if (lat1 == lat2 && lon1 == lon2) return 0.0f;
+    const float R = 6371000.0f;
+    const float p = 0.0174532925f;                 // PI / 180
+    // Deltas in double (keeps precision of the small differences), trig in float.
+    float dLat = (float)(lat2 - lat1) * p;
+    float dLon = (float)(lon2 - lon1) * p;
+    float sLat = sinf(dLat * 0.5f);
+    float sLon = sinf(dLon * 0.5f);
+    float a = sLat * sLat + cosf((float)lat1 * p) * cosf((float)lat2 * p) * sLon * sLon;
+    if (a < 0.0f) a = 0.0f;
+    if (a > 1.0f) a = 1.0f;
+    return 2.0f * R * asinf(sqrtf(a));
 }
 
 bool gps_init() {

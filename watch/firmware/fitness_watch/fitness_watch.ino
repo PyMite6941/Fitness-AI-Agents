@@ -2,15 +2,13 @@
 #include "sensors.h"
 #include "display.h"
 #include "wifi_sync.h"
+#include "wifi_provision.h"
 #include "gps_tracker.h"
 #include <Arduino.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
 
 // ── Forward declarations ───────────────────────────────────────────────────
 static void _start_workout();
 static void _finish_workout();
-static void _post_route(const WorkoutRecord& w);
 
 // ── State ─────────────────────────────────────────────────────────────────
 enum AppState { STATE_IDLE, STATE_WORKOUT };
@@ -29,12 +27,14 @@ static float         _hrSum      = 0;
 static int           _hrSamples  = 0;
 static int           _stepsAtStart = 0;
 
-// Button debounce
-static unsigned long _btnALast = 0;
-static unsigned long _btnBLast = 0;
-static bool          _btnAWas  = HIGH;
-static bool          _btnBWas  = HIGH;
+// Button debounce / hold tracking
+static unsigned long _btnBLast    = 0;
+static bool          _btnBWas     = HIGH;
+static bool          _btnAWas     = HIGH;
+static unsigned long _btnADownMs  = 0;
+static bool          _btnAHold    = false;
 #define BTN_DEBOUNCE_MS 200
+#define BTN_HOLD_MS    1200    // hold button A this long → Wi-Fi pairing
 
 // ── Workout helpers ────────────────────────────────────────────────────────
 
@@ -58,63 +58,34 @@ static void _finish_workout() {
 
     char endISO[25];
     wifi_iso_now_buf(endISO, sizeof(endISO));
-
     int elapsed_s = (int)((millis() - _workoutStartMs) / 1000UL);
 
     WorkoutRecord w = {};
-    strncpy(w.workout_type, "running", sizeof(w.workout_type) - 1);
-    strncpy(w.started_at,   _workoutStartISO, sizeof(w.started_at) - 1);
-    strncpy(w.ended_at,     endISO,           sizeof(w.ended_at)   - 1);
-    w.avg_heart_rate  = (_hrSamples > 0) ? (_hrSum / _hrSamples) : 0;
-    w.max_heart_rate  = _maxHR;
-    w.distance_meters = gps_route_distance_m();
-    w.steps           = sensors_get().steps;
-
-    // Rough calorie estimate: MET 8 × assumed weight 70 kg × hours
-    w.calories_burned = 8.0f * 70.0f * (elapsed_s / 3600.0f);
-
-    wifi_sync_workout(w);
+    strncpy(w.workout_type, "running",        sizeof(w.workout_type) - 1);
+    strncpy(w.started_at,   _workoutStartISO, sizeof(w.started_at)   - 1);
+    strncpy(w.ended_at,     endISO,           sizeof(w.ended_at)     - 1);
+    w.avg_heart_rate = (_hrSamples > 0) ? (_hrSum / _hrSamples) : 0;
+    w.max_heart_rate = _maxHR;
+    w.steps          = sensors_get().steps;
+    // distance + calories are computed by the backend now (no haversine/MET math
+    // on the FPU-less C3, and no hardcoded body weight) — left at 0 here.
 
     if (gps_point_count() > 1) {
-        _post_route(w);
+        // GPS run: /routes/ derives distance, pace and calories and records the
+        // workout. Queue the route; the background task uploads it (non-blocking).
+        wifi_queue_route(w);
+    } else {
+        // No GPS fix: send a plain workout summary; the backend estimates
+        // calories from duration + type.
+        wifi_sync_workout(w);
     }
+    wifi_flush_async();   // upload promptly, off the main loop
 
     _state = STATE_IDLE;
     display_set_mode(MODE_CLOCK);
     display_notify("Saved!");
-    Serial.printf("[app] Workout done: %.0fm, %ds, HR avg %.0f\n",
-                  w.distance_meters, elapsed_s, w.avg_heart_rate);
-}
-
-static void _post_route(const WorkoutRecord& w) {
-    if (!wifi_is_connected()) {
-        Serial.println("[app] No WiFi — route not posted");
-        return;
-    }
-
-    // Serialise into a fixed buffer to avoid heap fragmentation
-    static char body[8192];
-    JsonDocument doc;
-    doc["workout_type"] = w.workout_type;
-    doc["started_at"]   = w.started_at;
-    doc["ended_at"]     = w.ended_at;
-    // Embed pre-serialised coordinates array as raw JSON
-    doc["coordinates"]  = serialized(gps_route_json());
-
-    size_t written = serializeJson(doc, body, sizeof(body));
-    if (written == 0 || written >= sizeof(body)) {
-        Serial.println("[app] Route JSON too large");
-        return;
-    }
-
-    HTTPClient http;
-    http.begin(String(API_BASE_URL) + "/routes/");
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("Authorization", String("Bearer ") + CLERK_TOKEN);
-    http.setTimeout(10000);
-    int code = http.POST((uint8_t*)body, written);
-    Serial.printf("[app] Route POST → HTTP %d\n", code);
-    http.end();
+    Serial.printf("[app] Workout done: %ds, HR avg %.0f, %d GPS pts\n",
+                  elapsed_s, w.avg_heart_rate, gps_point_count());
 }
 
 // ── Button handling ────────────────────────────────────────────────────────
@@ -123,11 +94,26 @@ static void _check_buttons() {
     unsigned long now = millis();
 
     bool aVal = digitalRead(PIN_BUTTON_A);
-    if (_btnAWas == HIGH && aVal == LOW && (now - _btnALast) > BTN_DEBOUNCE_MS) {
-        _btnALast = now;
+    if (_btnAWas == HIGH && aVal == LOW) {       // press begins
+        _btnADownMs = now;
+        _btnAHold   = false;
+    }
+    if (aVal == LOW && !_btnAHold && _btnADownMs != 0 &&
+        (now - _btnADownMs) > BTN_HOLD_MS) {     // held → Wi-Fi pairing
+        _btnAHold = true;
         _lastActivityMs = now;
-        display_cycle_mode();
-        display_on();
+        display_centered("Re-pair Wi-Fi", "release button");
+        if (wifi_prov_portal(true)) wifi_set_time_ntp();
+        _lastSyncMs    = millis();               // avoid an immediate sync burst
+        _lastActivityMs = millis();
+    }
+    if (_btnAWas == LOW && aVal == HIGH) {       // release
+        if (!_btnAHold && (now - _btnADownMs) > BTN_DEBOUNCE_MS) {
+            _lastActivityMs = now;
+            display_cycle_mode();                // short tap → next screen
+            display_on();
+        }
+        _btnADownMs = 0;
     }
     _btnAWas = aVal;
 
@@ -162,14 +148,21 @@ void setup() {
     bool sensorsOk = sensors_init();
     bool gpsOk     = gps_init();
 
-    if (dispOk) display_notify("Connecting WiFi...", 3000);
-
-    bool wifiOk = wifi_connect();
+    bool wifiOk = false;
+    if (wifi_prov_has_creds()) {
+        // Already paired with a hotspot — just reconnect.
+        if (dispOk) display_notify("Connecting WiFi...", 2500);
+        wifiOk = wifi_connect();
+    } else {
+        // First boot — run the pairing portal. Skippable (BTN A) for offline use.
+        wifiOk = wifi_prov_portal(true);
+        if (wifiOk) wifi_set_time_ntp();
+    }
 
     // Start background sync task AFTER WiFi so it can reconnect if needed
     wifi_init_sync_task();
 
-    if (dispOk) display_notify(wifiOk ? "WiFi OK!" : "No WiFi", 1500);
+    if (dispOk) display_notify(wifiOk ? "WiFi OK!" : "Offline mode", 1500);
 
     Serial.printf("[app] Ready — display:%d sensors:%d gps:%d wifi:%d\n",
                   dispOk, sensorsOk, gpsOk, wifiOk);
@@ -185,12 +178,16 @@ void loop() {
     _check_buttons();
     gps_update();
 
-    // ── Sensor read ────────────────────────────────────────────────────
+    // ── Sensor sampling ─────────────────────────────────────────────────
+    // MUST run every loop. The MAX30102 beat detector and the accelerometer
+    // step detector need to see the raw waveform at ~100 Hz — sampling once a
+    // second (the old behaviour) detects neither a heartbeat nor a step.
+    sensors_update();
+
+    // Aggregate workout HR stats at 1 Hz. Only this slow roll-up is gated;
+    // the fast beat/step detection happens in sensors_update() above.
     if ((now - _lastSensorMs) >= SENSOR_INTERVAL_MS) {
         _lastSensorMs = now;
-        sensors_update();
-
-        // Accumulate HR stats during workout
         if (_state == STATE_WORKOUT) {
             const SensorData& d = sensors_get();
             if (d.hr_valid && d.heart_rate > 0) {
@@ -221,4 +218,10 @@ void loop() {
         wifi_sync_reading(sensors_get());   // queue current reading
         wifi_flush_async();                 // hand off to background task
     }
+
+    // Yield ~1 ms: lets the FreeRTOS IDLE task run (feeds the task watchdog,
+    // frees memory) and gives the background Wi-Fi sync task CPU. The C3 is
+    // single-core, so without this a tight loop can starve both. 1 ms still
+    // leaves the sensor loop running at hundreds of Hz.
+    delay(1);
 }

@@ -20,3 +20,7 @@ void        display_update(const SensorData& data, bool wifi_ok, bool syncing,
 void        display_off();
 void        display_on();
 void        display_notify(const char* msg, uint16_t ms = 1500);
+
+// Full-screen pairing / status screens (used by the Wi-Fi setup flow)
+void        display_pairing(const char* ap_ssid, const char* url);
+void        display_centered(const char* line1, const char* line2);

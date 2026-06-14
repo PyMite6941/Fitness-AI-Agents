@@ -1,6 +1,10 @@
 #pragma once
 
 // ── WiFi ──────────────────────────────────────────────────────────────────
+// Normally you DON'T edit these — the watch pairs with your phone's hotspot
+// on first boot (or after a long-press of button A) and stores the network in
+// flash. These are only a fallback: leave them as "YourSSID" to force pairing,
+// or hard-code a network here to skip the portal entirely.
 #define WIFI_SSID       "YourSSID"
 #define WIFI_PASSWORD   "YourPassword"
 
@@ -13,15 +17,17 @@
 // Lasts ~1 month. Replace when expired.
 #define CLERK_TOKEN     "your_clerk_session_token_here"
 
-// ── Hardware Pins (ESP32) ──────────────────────────────────────────────────
-#define PIN_SDA         21
-#define PIN_SCL         22
-#define PIN_GPS_RX      16      // UART2 RX ← GPS TX
-#define PIN_GPS_TX      17      // UART2 TX → GPS RX (unused)
-#define PIN_BUTTON_A     0      // Boot button — cycle display mode
-#define PIN_BUTTON_B    35      // Optional second button — start/stop workout
-#define PIN_BATT_ADC    34      // Battery voltage divider (3.3V ref, 100k+100k)
-#define PIN_VIBE        25      // Vibration motor (optional)
+// ── Hardware Pins (ESP32-C3 SuperMini) ─────────────────────────────────────
+// Matches watch/wiring.md. All three I2C devices share GPIO 8 (SDA) / 9 (SCL).
+#define PIN_SDA          8      // I2C SDA — MPU6050 + MAX30102 + OLED (shared)
+#define PIN_SCL          9      // I2C SCL — shared
+#define PIN_BUTTON_A     4      // "Back" button  — tap: cycle screen, hold: Wi-Fi pairing
+#define PIN_BUTTON_B     5      // "Select" button — start/stop workout
+#define PIN_GPS_RX       6      // UART1 RX ← GPS TX  (optional NEO-6M; not in base wiring)
+#define PIN_GPS_TX       7      // UART1 TX → GPS RX  (unused by the NEO-6M)
+#define PIN_BATT_ADC     3      // ADC1 channel — battery divider (optional; unused in firmware)
+#define PIN_VIBE        -1      // Vibration motor (optional). -1 = none wired (disabled)
+// If the two buttons feel swapped, exchange the GPIO numbers on BUTTON_A / BUTTON_B.
 
 // ── OLED ──────────────────────────────────────────────────────────────────
 #define OLED_ADDR       0x3C
@@ -29,7 +35,7 @@
 #define OLED_HEIGHT     64
 
 // ── Intervals ─────────────────────────────────────────────────────────────
-#define SENSOR_INTERVAL_MS      1000    // Read sensors every 1 s
+#define SENSOR_INTERVAL_MS      1000    // Workout HR-stat roll-up period (raw HR/step sampling runs every loop)
 #define SYNC_INTERVAL_MS       300000   // Sync to backend every 5 min
 #define GPS_POINT_INTERVAL_MS    5000   // Record GPS point every 5 s during workout
 #define DISPLAY_TIMEOUT_MS      15000   // Screen off after 15 s idle

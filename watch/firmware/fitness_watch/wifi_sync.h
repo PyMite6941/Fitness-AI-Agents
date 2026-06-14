@@ -26,6 +26,12 @@ String wifi_iso_now();
 void  wifi_sync_reading(const SensorData& data);
 void  wifi_sync_workout(const WorkoutRecord& w);
 
+// Queue a completed GPS route (coordinates + workout meta) for upload to
+// /routes/. Serialises immediately (main-loop context, GPS data stable) but the
+// HTTP POST happens in the background sync task. The backend derives distance,
+// pace and calories from it, so the watch sends no separate workout for GPS runs.
+void  wifi_queue_route(const WorkoutRecord& w);
+
 // Start background FreeRTOS sync task
 void  wifi_init_sync_task();
 

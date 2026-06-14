@@ -142,6 +142,10 @@ export default function Routes() {
 				coordinates: coords,
 				started_at: startTime.toISOString(),
 				ended_at: new Date().toISOString(),
+				// Route-only post (no separate workout) — have the backend record
+				// the workout too, so this tracked run shows in the dashboard with
+				// server-computed distance, pace and calories.
+				record_workout: true,
 			});
 			stopTracking();
 			setRoutes(prev => [route, ...prev]);
