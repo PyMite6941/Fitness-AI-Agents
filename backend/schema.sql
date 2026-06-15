@@ -70,6 +70,7 @@ CREATE TABLE routes (
     distance_meters  FLOAT,
     duration_seconds INTEGER,
     pace             TEXT,
+    calories_burned  FLOAT,
     started_at       TIMESTAMPTZ NOT NULL,
     ended_at         TIMESTAMPTZ NOT NULL,
     notes            TEXT,
@@ -77,6 +78,9 @@ CREATE TABLE routes (
 );
 
 CREATE INDEX idx_routes_user_time ON routes (user_id, started_at DESC);
+
+-- Migration: run if routes table already exists
+ALTER TABLE routes ADD COLUMN IF NOT EXISTS calories_burned FLOAT;
 
 -- Migration: run this if watch_data table already exists (ending_heart_rate was added to CREATE TABLE above)
 ALTER TABLE watch_data ADD COLUMN IF NOT EXISTS ending_heart_rate FLOAT;

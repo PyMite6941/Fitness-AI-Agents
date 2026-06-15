@@ -12,42 +12,75 @@ from bots import Bots
 
 router = APIRouter()
 
+# Columns from the routes table that are meaningful for analysis.
+# Excludes coordinates (raw lat/lng blob), user_id, and id.
+_ROUTE_COLUMNS = [
+    "started_at", "ended_at", "workout_type",
+    "distance_meters", "duration_seconds", "pace", "calories_burned", "notes",
+]
+
+
+def _write_csv(rows: list[dict], columns: list[str]) -> str:
+    """Write rows to a temp CSV (only the given columns) and return the path."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+        return f.name
+
 
 @router.post("/")
 async def run_analysis(request: AnalysisRequest, user_id: str = Depends(get_user_id)):
-    """Pull the user's watch data, run the AI crew, store and return the result."""
+    """Pull the user's watch data + routes, run the AI crew, store and return the result."""
     db = await get_db()
 
-    query = db.table("watch_data").select("*").eq("user_id", user_id)
+    # ── Watch readings + workouts ──────────────────────────────────────────
+    wd_query = db.table("watch_data").select("*").eq("user_id", user_id)
     if request.date_from:
-        query = query.gte("timestamp", request.date_from.isoformat())
+        wd_query = wd_query.gte("timestamp", request.date_from.isoformat())
     if request.date_to:
-        query = query.lte("timestamp", request.date_to.isoformat())
+        wd_query = wd_query.lte("timestamp", request.date_to.isoformat())
 
-    result = await query.order("timestamp").execute()
-    rows = result.data
+    wd_result = await wd_query.order("timestamp").execute()
+    wd_rows = wd_result.data
 
-    if not rows:
+    if not wd_rows:
         raise HTTPException(status_code=404, detail="No watch data found for this user")
 
-    for row in rows:
+    for row in wd_rows:
         row.pop("user_id", None)
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
-        writer.writeheader()
-        writer.writerows(rows)
-        tmp_path = f.name
+    # ── GPS routes ─────────────────────────────────────────────────────────
+    rt_query = db.table("routes").select(", ".join(_ROUTE_COLUMNS)).eq("user_id", user_id)
+    if request.date_from:
+        rt_query = rt_query.gte("started_at", request.date_from.isoformat())
+    if request.date_to:
+        rt_query = rt_query.lte("started_at", request.date_to.isoformat())
+
+    rt_result = await rt_query.order("started_at").execute()
+    rt_rows = rt_result.data
+
+    # ── Write CSVs ─────────────────────────────────────────────────────────
+    tmp_watch = _write_csv(wd_rows, list(wd_rows[0].keys()))
+    tmp_routes = _write_csv(rt_rows, _ROUTE_COLUMNS) if rt_rows else None
+
+    # Pass both paths (newline-separated) — the crew's task descriptions already
+    # handle multiple files and say "If multiple files, analyze together."
+    data_input = tmp_watch
+    if tmp_routes:
+        data_input = f"{tmp_watch}\n{tmp_routes}"
 
     try:
         bots = Bots(context=request.context)
         loop = asyncio.get_running_loop()
-        raw_json = await loop.run_in_executor(None, lambda: bots.create_crew(data=tmp_path))
+        raw_json = await loop.run_in_executor(None, lambda: bots.create_crew(data=data_input))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     finally:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+        if os.path.exists(tmp_watch):
+            os.unlink(tmp_watch)
+        if tmp_routes and os.path.exists(tmp_routes):
+            os.unlink(tmp_routes)
 
     # Parse the structured FormattedOutput returned by bots.create_crew()
     parsed: dict = {}

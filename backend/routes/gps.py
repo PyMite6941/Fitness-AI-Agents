@@ -81,6 +81,8 @@ async def save_route(payload: RoutePayload, user_id: str = Depends(get_user_id))
     pace = calc_pace(distance, duration)
     duration_min = round(duration / 60.0, 2)
 
+    calories = estimate_calories(duration_min, payload.workout_type)
+
     record = {
         "user_id": user_id,
         "workout_type": payload.workout_type,
@@ -88,6 +90,7 @@ async def save_route(payload: RoutePayload, user_id: str = Depends(get_user_id))
         "distance_meters": distance,
         "duration_seconds": duration,
         "pace": pace,
+        "calories_burned": calories,
         "started_at": payload.started_at,
         "ended_at": payload.ended_at,
         "notes": payload.notes,
@@ -112,7 +115,7 @@ async def save_route(payload: RoutePayload, user_id: str = Depends(get_user_id))
             "duration_minutes": duration_min,
             "avg_heart_rate":   payload.avg_heart_rate,
             "max_heart_rate":   payload.max_heart_rate,
-            "calories_burned":  estimate_calories(duration_min, payload.workout_type),
+            "calories_burned":  calories,
             "distance_meters":  distance,
         }
         try:
