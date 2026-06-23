@@ -7,6 +7,6 @@ PyJWT==2.12.1
 supabase==2.30.1
 crewai==1.14.5
 crewai-tools==1.14.5
-litellm==1.68.4
-pandas==3.0.3
-fastembed==0.8.0
+litellm>=1.68.0,<1.69.0
+pandas>=2.0.0
+fastembed>=0.8.0
