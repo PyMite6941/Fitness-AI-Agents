@@ -1,8 +1,13 @@
-gradio>=5.0.0
+# Validated dependency set for the HF Gradio Space (pip dry-run resolves clean).
+# The three-way tension that has to be threaded:
+#   - gradio 5.27.1: aiofiles<25 (ok for crewai), NO [mcp] extra (avoids mcp==1.10.1),
+#     pydantic<2.12  ->  with crewai's pydantic>=2.11.9 this forces pydantic 2.11.9
+#   - crewai 1.14.5: openai>=2.30, pydantic 2.11.9..<2.13, mcp~=1.26
+#   - litellm 1.85.x: openai>=2.20 (lets crewai pick 2.30), pydantic>=2.10 (allows 2.11.9)
+# Do NOT pin pydantic here — let the resolver land on 2.11.9. Do NOT bump gradio to
+# 5.28+ (re-adds the [mcp] extra pinning mcp==1.10.1, which crewai rejects).
+gradio==5.27.1
 crewai==1.14.5
 crewai-tools==1.14.5
-litellm==1.68.4
-pydantic>=2.0.0
+litellm>=1.85.0,<1.86.0
 python-dotenv>=1.0.0
-pandas>=2.0.0
-fastembed>=0.8.0

@@ -38,3 +38,8 @@ watch-archive/
 
 # Archived old FormCoach server
 server-archive/
+
+# Gradio Space vendors backend/bots.py via prepare_space.py — a generated copy.
+# Ignored HERE (repo root) so it stays out of the main repo, but NOT in
+# huggingface_space/.gitignore, so the HF uploader still ships it to the Space.
+huggingface_space/bots.py

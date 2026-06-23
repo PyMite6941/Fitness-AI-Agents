@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 
-# Vendored from ../backend by prepare_space.py — generated, not tracked in the
-# main repo. It IS committed to the HuggingFace Space (the demo needs it there).
-bots.py
+# NOTE: do NOT gitignore bots.py here. huggingface_hub upload_folder and
+# `huggingface-cli upload` both honor THIS .gitignore, so ignoring bots.py here
+# silently drops it from the Space -> ModuleNotFoundError at runtime. The
+# "keep it out of the main repo" rule lives in the repo-root .gitignore instead
+# (as `huggingface_space/bots.py`), which the uploader never reads.
