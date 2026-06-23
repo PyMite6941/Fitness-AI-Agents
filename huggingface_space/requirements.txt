@@ -1,0 +1,8 @@
+gradio>=5.0.0
+crewai==1.14.5
+crewai-tools==1.14.5
+litellm==1.68.4
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+pandas>=2.0.0
+fastembed>=0.8.0

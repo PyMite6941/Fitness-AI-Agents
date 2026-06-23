@@ -88,6 +88,8 @@ export default function Dashboard() {
 	const [selected, setSelected]   = useState(null);
 	const [error, setError]     = useState('');
 	const [loading, setLoading] = useState(true);
+	const [seeding, setSeeding] = useState(false);
+	const [sources, setSources] = useState(null);
 
 	useEffect(() => { load(); }, []);
 
@@ -95,16 +97,18 @@ export default function Dashboard() {
 		setLoading(true);
 		try {
 			const token = await getToken();
-			const [me, chartData, hist, sum] = await Promise.all([
+			const [me, chartData, hist, sum, src] = await Promise.all([
 				api.getMe(token),
 				api.getCharts(token),
 				api.getHistory(token),
 				api.getSummary(token),
+				api.getSources(token).catch(() => null),
 			]);
 			setStats(me);
 			setCharts(chartData);
 			setHistory(hist.analyses);
 			setSummary(sum);
+			setSources(src);
 		} catch (e) {
 			setError(e.message);
 		} finally {
@@ -129,10 +133,26 @@ export default function Dashboard() {
 		}
 	}
 
-	const noChart = !charts || charts.calories.labels.length === 0;
+	async function handleDemoSeed() {
+		setSeeding(true);
+		setError('');
+		try {
+			const token = await getToken();
+			await api.demoSeed(token);
+			await load();
+		} catch (e) {
+			setError(e.message);
+		} finally {
+			setSeeding(false);
+		}
+	}
+
 	const tw = summary?.this_week;
 	const lw = summary?.last_week;
 	const rec = summary?.records;
+	const hasData = tw && tw.workouts > 0;
+	const noData = !loading && !hasData;
+	const noChart = !charts || !charts.calories?.labels?.length;
 
 	return (
 		<div className='dash'>
@@ -177,6 +197,7 @@ export default function Dashboard() {
 							<p className='dash-subtitle'>This week vs last week</p>
 						)}
 					</div>
+					{seeding && <div className='dash-error'>Seeding demo data…</div>}
 					{error && <div className='dash-error'>{error}</div>}
 				</header>
 
@@ -195,8 +216,35 @@ export default function Dashboard() {
 						{/* ── OVERVIEW ── */}
 						{tab === 'Overview' && (
 							<>
+								{/* Welcome prompt when empty */}
+								{noData && (
+									<div className='welcome-card'>
+										<h2 className='welcome-title'>Welcome to FitnessAI</h2>
+										<p className='welcome-desc'>
+											Your data, unified. Connect your platforms or load sample data to see how it works.
+										</p>
+										<div className='welcome-actions'>
+											<button className='hero-btn' onClick={handleDemoSeed} disabled={seeding}>
+												{seeding ? 'LOADING…' : '⚡ LOAD SAMPLE DATA'}
+											</button>
+											<a href='/log' className='hero-btn-ghost' style={{ textDecoration: 'none', display: 'inline-block' }}>
+												+ CONNECT A PLATFORM
+											</a>
+										</div>
+										<div className='welcome-sources'>
+											<span className='welcome-tag'>Strava</span>
+											<span className='welcome-tag'>Fitbit</span>
+											<span className='welcome-tag'>Garmin</span>
+											<span className='welcome-tag'>Apple Health</span>
+											<span className='welcome-tag'>Nike Run Club</span>
+											<span className='welcome-tag'>Google Fit</span>
+											<span className='welcome-tag'>Manual</span>
+										</div>
+									</div>
+								)}
+
 								{/* Weekly metric cards */}
-								{tw && (
+								{hasData && tw && (
 									<div className='week-row'>
 										<WeekCard
 											label='WORKOUTS'    accent='#ff3c00'
@@ -258,6 +306,7 @@ export default function Dashboard() {
 													<div>
 														<span className='recent-type'>{w.workout_type || 'Workout'}</span>
 														<span className='recent-date'>{w.timestamp?.slice(0, 10)}</span>
+														{w.device && <span className='source-badge'>{w.device.replace(/_/g, ' ')}</span>}
 													</div>
 													<div className='recent-right'>
 														<span>{w.duration_minutes ? `${Math.round(w.duration_minutes)}m` : '—'}</span>
@@ -279,6 +328,37 @@ export default function Dashboard() {
 											{rec.max_steps    && <RecordCard value={rec.max_steps.toLocaleString()} unit='steps' label='Most Steps (day)' />}
 											{rec.max_calories && <RecordCard value={rec.max_calories} unit='kcal' label='Most Calories' />}
 											{rec.max_hr       && <RecordCard value={rec.max_hr}       unit='bpm'  label='Peak Heart Rate' />}
+										</div>
+									</div>
+								)}
+
+								{/* Data Sources */}
+								{sources && sources.sources?.length > 0 && (
+									<div className='sources-section'>
+										<p className='section-label'>DATA SOURCES <span className='section-sub'>{sources.total_entries} total entries</span></p>
+										<div className='sources-grid'>
+											{sources.sources.map(s => (
+												<div className='source-card' key={s.name}>
+													<span className='source-indicator' />
+													<div className='source-info'>
+														<span className='source-name'>{s.name.replace(/_/g, ' ')}</span>
+														<span className='source-meta'>{s.count.toLocaleString()} readings</span>
+														{s.coverage && (
+															<div className='coverage-row'>
+																{Object.entries(s.coverage).filter(([,v]) => v > 0).map(([type]) => (
+																	<span key={type} className='coverage-dot' title={type}>{{
+																		heart_rate: '♥', steps: '◎', sleep: '◑',
+																		distance: '↗', calories: '⚡', workouts: '▸',
+																	}[type] || type}</span>
+																))}
+															</div>
+														)}
+													</div>
+													{s.count > 0 && (
+														<span className='source-pct'>{Math.round(s.count / sources.total_entries * 100)}%</span>
+													)}
+												</div>
+											))}
 										</div>
 									</div>
 								)}
@@ -579,5 +659,5 @@ function RecordCard({ value, unit, label }) {
 }
 
 function Empty() {
-	return <p className='dim empty-msg'>No data yet — sync your watch or log a workout to get started.</p>;
+	return <p className='dim empty-msg'>No data yet — connect Strava, Fitbit, or Garmin; import from Apple Health, Nike, or Google Fit; or log a workout manually. Every data source makes your analysis stronger.</p>;
 }

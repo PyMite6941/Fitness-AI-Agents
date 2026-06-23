@@ -5,14 +5,19 @@ import './App.css';
 
 const features = [
 	{
-		icon: '⌚',
-		title: 'Sync From Any Device',
-		desc: 'Apple Watch, Garmin, Fitbit — connect your wearable and your data flows in automatically.',
+		icon: '📱',
+		title: 'Import From Any Source',
+		desc: 'Strava, Fitbit, Garmin, Apple Health, Nike Run Club, Google Fit — bring your data from anywhere.',
+	},
+	{
+		icon: '🔄',
+		title: 'Merge Everything',
+		desc: 'Data from your Apple Watch, Garmin, Strava, and manual logs all gets merged into one unified view. No duplicates, no gaps.',
 	},
 	{
 		icon: '🤖',
 		title: 'Multi-Agent AI Analysis',
-		desc: 'A pipeline of specialized AI agents cleans, interprets, and turns your raw data into clear insights.',
+		desc: 'A pipeline of specialized AI agents cleans, interprets, and turns your raw data into clear insights — with source-level awareness.',
 	},
 	{
 		icon: '📈',
@@ -27,9 +32,9 @@ const features = [
 ];
 
 const steps = [
-	{ number: '01', title: 'Connect Your Watch', desc: 'Link your wearable or upload a data export. We support all major formats.' },
+	{ number: '01', title: 'Connect Your Sources', desc: 'Sync Strava, Fitbit, or Garmin via OAuth. Import from Apple Health, Nike Run Club, or Google Fit. Log manually. We merge everything by source.' },
 	{ number: '02', title: 'Ask a Question', desc: 'Tell the AI what you want to know — in plain English, no technical knowledge needed.' },
-	{ number: '03', title: 'Get Your Analysis', desc: 'Receive a full breakdown with findings, anomalies, and recommendations in seconds.' },
+	{ number: '03', title: 'Get Your Analysis', desc: 'Receive a full breakdown with findings, anomalies, and recommendations — aware of which source each insight came from.' },
 ];
 
 export default function FitnessAI() {
@@ -65,10 +70,10 @@ export default function FitnessAI() {
 			<section className='hero'>
 				<div className='hero-overlay' />
 				<div className='hero-content'>
-					<p className='hero-tag'>AI-POWERED PERFORMANCE</p>
+					<p className='hero-tag'>ALL YOUR DATA. ONE ANALYSIS.</p>
 					<h1>TRAIN SMARTER.<br />RECOVER FASTER.</h1>
 					<p className='hero-sub'>
-						Connect your wearable. Ask a question. Get AI-powered insights built from your actual fitness data.
+						Connect Strava, Apple Watch, Garmin, Fitbit — or import from Nike, Google Fit, Apple Health. Every source makes your AI analysis stronger.
 					</p>
 					<div className='hero-actions'>
 						{!isSignedIn ? (
@@ -89,9 +94,9 @@ export default function FitnessAI() {
 
 			{/* STATS BAR */}
 			<div className='stats-bar'>
-				<div className='stat'><strong>12+</strong><span>Data Sources</span></div>
+				<div className='stat'><strong>6</strong><span>Platform Integrations</span></div>
 				<div className='stat-divider' />
-				<div className='stat'><strong>4</strong><span>AI Agents</span></div>
+				<div className='stat'><strong>2</strong><span>OAuth + File Import</span></div>
 				<div className='stat-divider' />
 				<div className='stat'><strong>&lt;30s</strong><span>Analysis Time</span></div>
 				<div className='stat-divider' />
@@ -136,7 +141,7 @@ export default function FitnessAI() {
 			<section className='cta-section'>
 				<div className='cta-inner'>
 					<p className='section-tag'>GET STARTED</p>
-					<h2>Your data has answers.<br />Start asking.</h2>
+					<h2>Every workout tells a story.<br />Start reading yours.</h2>
 					{!isSignedIn ? (
 						<SignUpButton mode="modal">
 							<button className='hero-btn'>CREATE FREE ACCOUNT</button>

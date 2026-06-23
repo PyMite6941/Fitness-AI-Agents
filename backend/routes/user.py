@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from auth import get_user_id
 from db import get_db
 from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 
 router = APIRouter()
 
@@ -130,6 +131,58 @@ async def get_summary(user_id: str = Depends(get_user_id)):
             "max_steps":    max_steps_day   if max_steps_day else None,
             "best_pace":    best_pace_str,
         },
+    }
+
+
+@router.get("/sources")
+async def get_data_sources(user_id: str = Depends(get_user_id)):
+    """Return a breakdown of all data sources — devices, integrations, manual — with counts, recency, and data-type coverage."""
+    db = await get_db()
+
+    data_res = await (
+        db.table("watch_data")
+        .select("device, timestamp, heart_rate, steps, sleep_hours, distance_meters, calories_burned, workout_type")
+        .eq("user_id", user_id)
+        .order("timestamp", desc=True)
+        .execute()
+    )
+
+    devices = {}
+    for row in (data_res.data or []):
+        device = (row.get("device") or "manual").strip().lower()
+        if not device or device == "unknown":
+            device = "manual"
+        if device not in devices:
+            devices[device] = {
+                "count": 0,
+                "last_seen": row.get("timestamp"),
+                "coverage": defaultdict(int),
+            }
+        d = devices[device]
+        d["count"] += 1
+        if row.get("timestamp") and (not d["last_seen"] or row["timestamp"] > d["last_seen"]):
+            d["last_seen"] = row["timestamp"]
+        # Track which data types this source provides
+        if row.get("heart_rate"):       d["coverage"]["heart_rate"] += 1
+        if row.get("steps"):            d["coverage"]["steps"] += 1
+        if row.get("sleep_hours"):      d["coverage"]["sleep"] += 1
+        if row.get("distance_meters"):  d["coverage"]["distance"] += 1
+        if row.get("calories_burned"):  d["coverage"]["calories"] += 1
+        if row.get("workout_type"):     d["coverage"]["workouts"] += 1
+
+    sorted_devices = sorted(devices.items(), key=lambda x: -x[1]["count"])
+
+    return {
+        "sources": [
+            {
+                "name": name,
+                "count": info["count"],
+                "last_seen": info["last_seen"],
+                "coverage": dict(info["coverage"]),
+            }
+            for name, info in sorted_devices
+        ],
+        "total_entries": sum(d["count"] for d in devices.values()),
     }
 
 

@@ -2,6 +2,10 @@
 logs
 *.log
 *.md
+!README.md
+!AGENTS.md
+!CLAUDE.md
+!license.md
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -28,3 +32,9 @@ __pycache__
 *.sw?
 
 .vercel
+
+# Archived hardware — will be rebuilt later
+watch-archive/
+
+# Archived old FormCoach server
+server-archive/

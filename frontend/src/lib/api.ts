@@ -20,6 +20,9 @@ export const api = {
 	getMe: (token: string) =>
 		request('/user/me', token),
 
+	getSources: (token: string) =>
+		request('/user/sources', token),
+
 	getSummary: (token: string) =>
 		request('/user/summary', token),
 
@@ -79,6 +82,12 @@ export const api = {
 	garminImport:  (token: string, file: File) => _fileUpload(token, '/integrations/garmin/import',  file),
 	appleImport:   (token: string, file: File) => _fileUpload(token, '/integrations/apple/import',   file),
 	googleFitImport: (token: string, file: File) => _fileUpload(token, '/integrations/google/import', file),
+
+	demoSeed: (token: string) =>
+		request('/demo/seed', token, { method: 'POST' }),
+
+	demoReset: (token: string) =>
+		request('/demo/reset', token, { method: 'POST' }),
 };
 
 function _fileUpload(token: string, path: string, file: File) {

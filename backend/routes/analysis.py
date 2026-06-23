@@ -8,8 +8,6 @@ from datetime import datetime, timezone
 from auth import get_user_id
 from db import get_db
 from models.analysis import AnalysisRequest
-from bots import Bots
-
 router = APIRouter()
 
 # Columns from the routes table that are meaningful for analysis.
@@ -70,8 +68,22 @@ async def run_analysis(request: AnalysisRequest, user_id: str = Depends(get_user
     if tmp_routes:
         data_input = f"{tmp_watch}\n{tmp_routes}"
 
+    # ── Source attribution ────────────────────────────────────────────────────
+    source_devices = set()
+    for row in wd_rows:
+        d = (row.get("device") or "").strip().lower()
+        if d and d != "unknown":
+            source_devices.add(d)
+    source_hint = ""
+    if source_devices:
+        src_list = ", ".join(sorted(source_devices))
+        source_hint = f"\n\nData sources detected: {src_list}. Mention specific sources in findings when relevant."
+
+    enriched_context = request.context + source_hint
+
     try:
-        bots = Bots(context=request.context)
+        from bots import Bots
+        bots = Bots(context=enriched_context)
         loop = asyncio.get_running_loop()
         raw_json = await loop.run_in_executor(None, lambda: bots.create_crew(data=data_input))
     except Exception as e:

@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+
+# Vendored from ../backend by prepare_space.py — generated, not tracked in the
+# main repo. It IS committed to the HuggingFace Space (the demo needs it there).
+bots.py
