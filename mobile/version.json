@@ -1,0 +1,18 @@
+{
+  "androidApp": {
+    "version": "0.1.0",
+    "versionCode": 1,
+    "releaseTag": "mobile-v0.1.0",
+    "apkUrl": "https://github.com/PyMite6941/Fitness-AI-Agents/releases/download/mobile-v0.1.0/fitness-ai.apk",
+    "minAndroid": 26,
+    "sizeMB": 4,
+    "notes": "First tracker build: background steps + GPS, syncs to your account via a pairing token.",
+    "changelog": [
+      "Background step + GPS tracking (foreground service)",
+      "Offline queue with sync when network returns",
+      "Pairing-token sign-in (no app store account needed)"
+    ]
+  },
+  "backendMin": "1.0.0",
+  "updatedAt": "2026-06-24"
+}

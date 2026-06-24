@@ -1,0 +1,72 @@
+.dl-page {
+	min-height: 100vh;
+	background: #0a0a0a;
+	color: #fff;
+	max-width: 760px;
+	margin: 0 auto;
+	padding: 24px 24px 80px;
+	font-family: inherit;
+}
+.dl-back {
+	background: none; border: 0; color: rgba(255, 255, 255, 0.6);
+	cursor: pointer; font-size: 0.9rem; padding: 8px 0; margin-bottom: 12px;
+}
+.dl-back:hover { color: #ff3c00; }
+
+.dl-head h1 { font-size: 2.2rem; margin-bottom: 12px; }
+.dl-head p { color: rgba(255, 255, 255, 0.6); line-height: 1.6; }
+.dl-version {
+	margin-top: 16px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.55);
+	border: 1px solid #2a2a2a; border-radius: 8px; padding: 8px 12px; display: inline-block;
+}
+.dl-version strong { color: #ff3c00; }
+.dl-warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+
+.dl-card {
+	background: #141414;
+	border: 1px solid #2a2a2a;
+	border-radius: 14px;
+	padding: 22px;
+	margin-top: 18px;
+}
+.dl-primary { border-color: rgba(255, 60, 0, 0.35); }
+.dl-note { color: rgba(255, 255, 255, 0.75); line-height: 1.55; }
+.dl-note strong { color: #ff3c00; }
+
+.dl-tag {
+	font-size: 0.72rem; letter-spacing: 0.08em; font-weight: 700;
+	color: #ff3c00; display: block; margin-bottom: 12px;
+}
+.dl-card h2 { font-size: 1.3rem; margin-bottom: 8px; }
+.dl-card h3 { font-size: 1.05rem; margin-bottom: 12px; }
+.dl-sub { color: rgba(255, 255, 255, 0.6); font-size: 0.92rem; line-height: 1.55; margin-bottom: 14px; }
+
+.dl-cmd {
+	display: flex; align-items: stretch; gap: 8px;
+	background: #000; border: 1px solid #2a2a2a; border-radius: 8px;
+	padding: 4px 4px 4px 14px; margin: 6px 0;
+}
+.dl-cmd code {
+	flex: 1; align-self: center; font-family: monospace; font-size: 0.88rem;
+	color: #4ade80; overflow-x: auto; white-space: nowrap;
+}
+.dl-cmd button {
+	background: #ff3c00; color: #fff; border: 0; border-radius: 6px;
+	padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.82rem;
+}
+.dl-or { color: rgba(255, 255, 255, 0.45); font-size: 0.85rem; margin-top: 14px; }
+
+.dl-btn {
+	display: inline-block; margin-top: 14px;
+	background: #ff3c00; color: #fff; text-decoration: none;
+	padding: 13px 26px; border-radius: 9px; font-weight: 700; letter-spacing: 0.02em;
+}
+
+details.dl-card summary { cursor: pointer; color: rgba(255, 255, 255, 0.7); font-weight: 600; }
+details.dl-card[open] summary { margin-bottom: 12px; }
+
+.dl-steps, .dl-security ul { padding-left: 20px; }
+.dl-steps li, .dl-security li { color: rgba(255, 255, 255, 0.75); line-height: 1.55; margin-bottom: 9px; }
+.dl-steps strong { color: #fff; }
+.dl-security code, .dl-cmd code { font-family: monospace; }
+.dl-security code { color: #4ade80; background: #000; padding: 1px 5px; border-radius: 4px; font-size: 0.85rem; }

@@ -55,6 +55,7 @@ export default function FitnessAI() {
 					<a href='#features'>Features</a>
 					<a href='#demo'>Live Demo</a>
 					<a href='/demo'>Sample Dashboard</a>
+					<a href='/app'>Get the App</a>
 				</div>
 				<div className='nav-auth'>
 					{!isSignedIn ? (
