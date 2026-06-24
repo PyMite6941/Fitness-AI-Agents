@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A fitness data intelligence platform with an AI analysis pipeline:
 
 - `backend/` — FastAPI API (Supabase DB, Clerk auth) and a CrewAI analysis crew. Deployed as a HuggingFace Space
-- `frontend/` — Vite + React 19 dashboard (Clerk auth, Leaflet maps, Chart.js). Deployed on Vercel
+- `frontend/` — Vite + React 19 dashboard (Clerk auth, Leaflet maps, Chart.js). Deployed on Vercel. Public pages: `/demo` (no-auth sample dashboard), `/app` (Android tracker download + GitHub version check)
+- `mobile/` — native **Android** tracker app (Kotlin) that records steps/GPS in the background and POSTs to `/ingest`. **Scaffolded, not yet built/tested** — see `mobile/README.md` for build steps + the full TODO. `mobile/version.json` is the GitHub-read source of truth for app version/APK URL.
 
 ## Commands
 
@@ -43,7 +44,10 @@ The custom ESP32-C3 smartwatch firmware has been archived. It can be rebuilt lat
 - All rows are keyed by Clerk `user_id` (a TEXT `sub` claim). There is no users table.
 
 ### API (`backend/main.py` mounts routers under prefixes)
-`/watch` (watch.py), `/ingest` (ingest.py — generic device data ingestion, any wearable), `/routes` (gps.py), `/user` (user.py — includes `/user/sources` for connected device/integration breakdown), `/charts` (charts.py), `/analyze` (analysis.py), `/integrations` (integrations.py), `/demo` (demo.py), `/health`.
+`/watch` (watch.py), `/ingest` (ingest.py — generic device data ingestion, any wearable), `/routes` (gps.py), `/user` (user.py — includes `/user/sources` for connected device/integration breakdown), `/charts` (charts.py), `/analyze` (analysis.py), `/integrations` (integrations.py), `/demo` (demo.py), `/device` (device.py — pairing tokens for the Android app), `/health`.
+
+### Device pairing & flexible auth (`backend/auth.py`, `backend/routes/device.py`)
+The Android tracker can't get a Clerk JWT, so it uses an opaque **device token**. `POST /device/pair` (Clerk-authed) issues a `fit_…` token stored in `device_tokens` (see `schema.sql`); `GET /device/list` + `POST /device/revoke` manage them. `get_user_id_flexible` accepts EITHER a Clerk JWT OR a `fit_…` token and is used by `/ingest`, so phone uploads land in `watch_data` under the user's `user_id`. **`device_tokens` table must be applied to Supabase + backend redeployed before this works (see TODO).**
 
 ### Data source tracking
 Every row in `watch_data` has a `device` column that records the source (e.g. `strava`, `apple_health`, `garmin`, `fitbit`, `manual`). The `/user/sources` endpoint returns a breakdown with counts and recency per source. The AI analysis pipeline receives the `device` column in its CSV input and gets a `source_hint` appended to the user's context so results can reference specific sources.
@@ -84,3 +88,22 @@ Strava OAuth + Fitbit OAuth + file imports (Nike/Garmin/Apple/Google). These ins
 - **Standalone Gradio demo → a separate HuggingFace Gradio Space** `pymite6941/fitness-ai-agents-demo` (`https://pymite6941-fitness-ai-agents-demo.hf.space`). Public, no-auth showcase of the same agent pipeline. It vendors a copy of `backend/bots.py` (run `python huggingface_space/prepare_space.py` before each deploy); `huggingface_space/README.md` has the full deploy steps. The vendored `bots.py` is gitignored in this repo but committed to the Space. `OPENROUTER_API_KEY` + `GROQ_API_KEY` are set as Space secrets. Deploy/update with `huggingface_hub.upload_folder(...)` or `huggingface-cli upload`.
 
 ## Gotchas
+
+- The live 8-agent pipeline makes ~20+ LLM calls/run, which exceeds free-tier quotas (OpenRouter ~50 free req/day without credits, Groq per-minute). The Gradio demo's "Use sample data" therefore returns a **cached** result (`huggingface_space/app.py::_SAMPLE_RESULT`); only real uploads run live. For reliable live runs, use a dedicated OpenRouter key with $10 credit (=1000 req/day).
+- `backend/.env` ships with **placeholder** model keys. Real keys live in the deployed Space secrets (and were borrowed from sibling projects during setup). HF Space secrets can't be read back via API.
+- Gradio Space dep set that builds: **gradio 5.27.1 + crewai 1.14.5 + litellm 1.85.x**, Python 3.11 (see `huggingface_space/requirements.txt` comments for why each pin). Don't gitignore `bots.py` inside `huggingface_space/` — the HF uploader honors it and drops the file.
+
+## Status & Handoff TODO (2026-06-24)
+
+**Shipped + pushed to `main` (frontend auto-deploys on Vercel):**
+- Pivot off the custom watch → multi-source platform; archived firmware in `watch-archive/`.
+- Live Gradio agent demo (HF), embedded on the landing page; `/demo` public sample dashboard; AI-analysis Export/Copy buttons.
+- `/app` Android download page + `mobile/version.json` + GitHub-based update flow.
+- Backend: `device_tokens` schema, `/device/pair|list|revoke`, `get_user_id_flexible`, `/ingest` accepts device tokens.
+- Android tracker **scaffold** in `mobile/android/`.
+
+**Not done yet — full, ordered TODO lives in [`mobile/README.md`](mobile/README.md). The critical-path items:**
+1. **Backend go-live for pairing:** apply the `device_tokens` table to Supabase (run the `CREATE TABLE` block in `backend/schema.sql`), then **redeploy the backend HF Space** so `/device/*` + flexible auth are live. Smoke-test pair → ingest.
+2. **Web pairing UI:** add Settings → "Pair a device" (calls `POST /device/pair`, shows token + QR) and a paired-device list with revoke; add `pairDevice/listDevices/revokeDevice` to `frontend/src/lib/api.ts`.
+3. **Android app:** open `mobile/android/` in Android Studio, add launcher icons, build a debug APK, test on a phone; then add GPS routes + step-baseline persistence (details in `mobile/README.md`).
+4. **Publish APK:** GitHub Release `mobile-v0.1.0` with `fitness-ai.apk`; keep `mobile/version.json` in sync.

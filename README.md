@@ -52,6 +52,20 @@ npm run dev
 
 [Live demo](https://fitness-ai-agents.vercel.app) — sign up, click "Load Sample Data", and see the full dashboard populated with 31 days of realistic fitness data and AI analysis results.
 
+Try the agents with **no signup**: the `/demo` sample dashboard, or the live Gradio demo embedded on the landing page (also at https://pymite6941-fitness-ai-agents-demo.hf.space).
+
+## Mobile tracker (Android)
+
+A native Android app (`mobile/`) tracks steps/GPS in the background — even with no watch —
+and uploads to your account via a paired-device token; analysis stays server-side. Download
+it from the site's **/app** page (no app store; sideload + GitHub auto-update). The phone
+tracks locally and syncs when Wi-Fi/data returns. iPhone has no tracker (Apple restricts
+background sensors) — connect Apple Health/Strava/Fitbit instead.
+
+> Status: backend ingestion + device pairing are built; the Android app is **scaffolded but
+> not yet compiled**. See [`mobile/README.md`](mobile/README.md) for build steps and the full
+> TODO, and the "Status & Handoff TODO" in [`CLAUDE.md`](CLAUDE.md).
+
 ## License
 
 See [license.md](license.md)

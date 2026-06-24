@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from auth import get_user_id
+from auth import get_user_id_flexible
 from db import get_db
 from models.watch import WatchSyncPayload
 from calories import estimate_calories
@@ -8,8 +8,11 @@ router = APIRouter()
 
 
 @router.post("/")
-async def ingest_data(payload: WatchSyncPayload, user_id: str = Depends(get_user_id)):
-    """Generic data ingestion — any wearable, any app, any device. POST readings and workouts here."""
+async def ingest_data(payload: WatchSyncPayload, user_id: str = Depends(get_user_id_flexible)):
+    """Generic data ingestion — any wearable, any app, any device. POST readings and workouts here.
+
+    Auth accepts either a Clerk JWT (web) or a paired-device token (the Android tracker).
+    """
     db = await get_db()
     rows = []
 
