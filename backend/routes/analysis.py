@@ -82,10 +82,22 @@ async def run_analysis(request: AnalysisRequest, user_id: str = Depends(get_user
     enriched_context = request.context + source_hint
 
     try:
-        from bots import Bots
+        try:
+            from bots import Bots          # heavy (crewai) — lazy so the app loads on Vercel
+        except ImportError:
+            # Vercel runs the LIGHT backend without the crew stack. The full pipeline
+            # lives in the agent demo Space. Fail clearly instead of a opaque 500.
+            raise HTTPException(
+                status_code=503,
+                detail="AI analysis isn't enabled on this server. Run the backend with "
+                       "requirements-crew.txt, or use the agent demo at "
+                       "https://pymite6941-fitness-ai-agents-demo.hf.space",
+            )
         bots = Bots(context=enriched_context)
         loop = asyncio.get_running_loop()
         raw_json = await loop.run_in_executor(None, lambda: bots.create_crew(data=data_input))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
     finally:

@@ -1,3 +1,7 @@
+# LIGHT backend deps — the data API (Supabase + Clerk auth). This is what Vercel
+# installs. The AI crew (crewai/litellm/etc.) is NOT here: /analyze lazy-imports
+# bots.py, and the heavy stack lives in requirements-crew.txt. Keeping this light
+# is what lets the backend run on Vercel (always-on, free) under the size limit.
 fastapi==0.136.1
 uvicorn==0.47.0
 python-dotenv==1.2.2
@@ -5,11 +9,3 @@ python-multipart==0.0.20
 httpx==0.28.1
 PyJWT==2.12.1
 supabase==2.30.1
-crewai==1.14.5
-crewai-tools==1.14.5
-# litellm 1.83.x pins openai==2.24.0, but crewai 1.14.5 needs openai>=2.30 —
-# litellm 1.85.x allows openai>=2.20 so crewai can pick 2.30. (No gradio here, so
-# pydantic isn't capped at <2.12 like in the HF Gradio Space.)
-litellm>=1.85.0,<1.86.0
-pandas>=2.0.0
-fastembed>=0.8.0

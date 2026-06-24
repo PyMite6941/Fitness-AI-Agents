@@ -1,0 +1,15 @@
+# Don't ship the heavy crew code or local cruft to Vercel — it's never imported
+# at runtime there (/analyze proxies to the demo Space).
+bots.py
+test.py
+test_data.csv
+requirements-crew.txt
+requirements-deploy.txt
+Dockerfile
+.dockerignore
+render.yaml
+setup.sh
+.venv/
+__pycache__/
+*.pyc
+.env

@@ -1,0 +1,9 @@
+# Heavy AI-crew stack — install ON TOP of the light backend to run /analyze
+# locally or in the agent demo. NOT installed on Vercel (too large; /analyze
+# proxies to the demo Space there). Pins explained in huggingface_space/requirements.txt.
+-r requirements.txt
+crewai==1.14.5
+crewai-tools==1.14.5
+litellm>=1.85.0,<1.86.0
+pandas>=2.0.0
+fastembed>=0.8.0
