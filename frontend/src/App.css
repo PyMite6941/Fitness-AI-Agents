@@ -453,3 +453,16 @@ body {
 @media (max-width: 768px) {
 	.demo-frame { height: 78vh; }
 }
+
+/* Footer app links */
+.footer { flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+.footer-links { display: flex; gap: 56px; flex-wrap: wrap; }
+.footer-group { display: flex; flex-direction: column; gap: 8px; }
+.footer-group h4 {
+	font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+	color: #ff3c00; margin-bottom: 4px;
+}
+.footer-group a {
+	color: rgba(255, 255, 255, 0.55); text-decoration: none; font-size: 0.9rem;
+}
+.footer-group a:hover { color: #fff; }

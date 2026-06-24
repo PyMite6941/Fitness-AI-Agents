@@ -61,9 +61,11 @@ export default function DownloadApp() {
 					⬇ Download &amp; Install{app ? ` (v${app.version})` : ''}
 				</a>
 				<ol className='dl-steps dl-steps-tight'>
-					<li>Tap <strong>Download &amp; Install</strong>, then open the file.</li>
-					<li>Allow installs from your browser this once (<em>Settings → Allow</em>) — normal for off-store apps.</li>
-					<li>Open <strong>FitnessAI</strong>, paste your pairing code, allow Activity &amp; Location.</li>
+					<li>Tap <strong>Download &amp; Install</strong> above. Your phone downloads <code>fitness-ai.apk</code> (~4 MB). If it warns <em>“this type of file can harm your device”</em>, that's the normal notice for any app outside the Play Store — tap <strong>Download anyway</strong>.</li>
+					<li>Open the file: tap the download notification, or go to <strong>Files → Downloads</strong> and tap <code>fitness-ai.apk</code>.</li>
+					<li>If Android says installing from this source isn't allowed, tap <strong>Settings</strong> on that popup, turn on <strong>Allow from this source</strong>, then tap back. You only do this once.</li>
+					<li>Tap <strong>Install</strong>, wait a few seconds, then tap <strong>Open</strong>.</li>
+					<li>In the app, paste your pairing code (next section) and tap <strong>Pair this phone</strong>. When asked, tap <strong>Allow</strong> for <em>Physical activity</em> and <em>Location</em> so it can count steps and record routes.</li>
 				</ol>
 			</div>
 
@@ -77,9 +79,11 @@ export default function DownloadApp() {
 					you get the full dashboard, AI analysis, and foreground GPS tracking.
 				</p>
 				<ol className='dl-steps dl-steps-tight'>
-					<li>Open <strong>{origin.replace(/^https?:\/\//, '') || 'this site'}</strong> in <strong>Safari</strong>.</li>
-					<li>Tap <strong>Share</strong> <span className='dl-mono'>⬆</span> → <strong>Add to Home Screen</strong> → <strong>Add</strong>.</li>
-					<li>Open the FitnessAI icon, sign in, then <strong>Connect Apple Health</strong>: on iPhone, Health app → Profile → Export All Health Data, and upload the <code>export.zip</code> on the dashboard.</li>
+					<li>Open <strong>{origin.replace(/^https?:\/\//, '') || 'this site'}</strong> in <strong>Safari</strong> — it must be Safari; Chrome on iPhone can't add to the Home Screen.</li>
+					<li>Tap the <strong>Share</strong> button — the square with an up-arrow <span className='dl-mono'>⬆</span> at the bottom of the screen.</li>
+					<li>Scroll down the share sheet and tap <strong>Add to Home Screen</strong>, then tap <strong>Add</strong> (top-right).</li>
+					<li>Open the new <strong>FitnessAI</strong> icon from your Home Screen and sign in.</li>
+					<li>To bring in Apple Watch / iPhone data: open Apple's <strong>Health</strong> app → tap your <strong>profile photo</strong> (top-right) → <strong>Export All Health Data</strong> → save the <code>export.zip</code>, then upload it on the FitnessAI dashboard.</li>
 				</ol>
 				<button className='dl-btn dl-btn-ghost' onClick={() => navigate('/')}>Open the web app</button>
 			</div>
@@ -107,9 +111,11 @@ export default function DownloadApp() {
 			<div className='dl-card'>
 				<h3>Link a phone to your account</h3>
 				<ol className='dl-steps'>
-					<li>On the web app: <strong>Settings → Pair a device</strong>, copy the code.</li>
-					<li>Paste it into the Android app — stored in the Android Keystore, not a password.</li>
-					<li>It tracks locally and uploads when Wi-Fi or data returns; analysis runs server-side on request.</li>
+					<li>On a computer or in any browser, open the FitnessAI web app and sign in.</li>
+					<li>Go to <strong>Settings → Pair a device</strong> and tap <strong>Generate code</strong>. A code starting with <code>fit_</code> appears (you can also scan it as a QR).</li>
+					<li>In the phone app, paste that code into the <strong>Pairing code</strong> box and tap <strong>Pair this phone</strong>. The code is saved in your phone's secure storage (Android Keystore / iOS Keychain) — it's a revocable key, never your password.</li>
+					<li>Done. The phone tracks locally and uploads to your account whenever Wi-Fi or mobile data is available. Analysis only runs on the web, when you ask for it — never on the phone.</li>
+					<li>Lost your phone? In <strong>Settings → Pair a device</strong>, tap <strong>Revoke</strong> next to it to cut it off instantly.</li>
 				</ol>
 			</div>
 

@@ -187,8 +187,24 @@ export default function FitnessAI() {
 
 			{/* FOOTER */}
 			<footer className='footer'>
-				<span className='nav-logo'>FitnessAI</span>
-				<p>© 2026 FitnessAI. All rights reserved.</p>
+				<div className='footer-col'>
+					<span className='nav-logo'>FitnessAI</span>
+					<p>© 2026 FitnessAI. All rights reserved.</p>
+				</div>
+				<div className='footer-links'>
+					<div className='footer-group'>
+						<h4>Try it</h4>
+						<a href='/demo'>Sample Dashboard</a>
+						<a href='#demo'>Live AI Demo</a>
+						<a href='https://pymite6941-fitness-ai-agents-demo.hf.space' target='_blank' rel='noreferrer'>Agent Demo (HuggingFace) ↗</a>
+					</div>
+					<div className='footer-group'>
+						<h4>Apps</h4>
+						<a href='/app'>Android tracker</a>
+						<a href='/app'>iPhone (Add to Home Screen)</a>
+						<a href='/app'>Desktop app</a>
+					</div>
+				</div>
 			</footer>
 
 		</div>
