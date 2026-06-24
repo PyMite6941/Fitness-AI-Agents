@@ -53,6 +53,8 @@ export default function FitnessAI() {
 				<div className='nav-links'>
 					<a href='#how-it-works'>How It Works</a>
 					<a href='#features'>Features</a>
+					<a href='#demo'>Live Demo</a>
+					<a href='/demo'>Sample Dashboard</a>
 				</div>
 				<div className='nav-auth'>
 					{!isSignedIn ? (
@@ -83,7 +85,7 @@ export default function FitnessAI() {
 						) : (
 							<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
 						)}
-						<a href='#how-it-works' className='hero-btn-ghost'>SEE HOW IT WORKS</a>
+						<a href='#demo' className='hero-btn-ghost'>TRY THE LIVE AI →</a>
 					</div>
 				</div>
 				<div className='hero-scroll'>
@@ -134,6 +136,36 @@ export default function FitnessAI() {
 							</div>
 						))}
 					</div>
+				</div>
+			</section>
+
+			{/* LIVE DEMO */}
+			<section className='section' id='demo'>
+				<div className='section-inner'>
+					<p className='section-tag'>TRY IT NOW</p>
+					<h2 className='section-heading'>Run the AI — no signup required</h2>
+					<p className='demo-sub'>
+						This is the real multi-agent pipeline. Hit <strong>Run Analysis</strong> with the
+						built-in sample data for an instant breakdown, or upload your own CSV to run the
+						full 8-agent crew live.
+					</p>
+					<div className='demo-frame-wrap'>
+						<iframe
+							title='Fitness AI Agents — live demo'
+							src='https://pymite6941-fitness-ai-agents-demo.hf.space'
+							className='demo-frame'
+							loading='lazy'
+							allow='clipboard-write'
+						/>
+					</div>
+					<a
+						className='hero-btn-ghost'
+						href='https://pymite6941-fitness-ai-agents-demo.hf.space'
+						target='_blank'
+						rel='noreferrer'
+					>
+						OPEN DEMO IN NEW TAB ↗
+					</a>
 				</div>
 			</section>
 

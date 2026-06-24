@@ -7,6 +7,7 @@ import App from './App.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import RoutesPage from './pages/Routes.jsx'
 import LogWorkout from './pages/LogWorkout.jsx'
+import DemoDashboard from './pages/DemoDashboard.jsx'
 
 function ProtectedRoute({ children }) {
   const { isSignedIn, isLoaded } = useAuth()
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />
+          <Route path="/demo" element={<DemoDashboard />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
           <Route path="/log" element={<ProtectedRoute><LogWorkout /></ProtectedRoute>} />

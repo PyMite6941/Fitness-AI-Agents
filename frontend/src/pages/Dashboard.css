@@ -942,3 +942,31 @@
 	.week-row { grid-template-columns: repeat(2, 1fr); }
 	.records-grid { flex-direction: column; }
 }
+
+/* Analysis result actions (export / copy) */
+.result-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+.result-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.result-action-btn {
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid #2a2a2a;
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 0.78rem;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	padding: 6px 12px;
+	border-radius: 7px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	white-space: nowrap;
+}
+.result-action-btn:hover {
+	border-color: #ff3c00;
+	color: #ff3c00;
+	background: rgba(255, 60, 0, 0.08);
+}
