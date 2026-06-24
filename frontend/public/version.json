@@ -13,6 +13,13 @@
       "Pairing-token sign-in (no app store account needed)"
     ]
   },
+  "iosApp": {
+    "version": "0.1.0",
+    "versionCode": 1,
+    "minIOS": 16,
+    "install": "sideload-or-testflight",
+    "notes": "Reads Apple Health (iPhone + Apple Watch) and syncs to your account. Build/sign in Xcode; iOS has no app-store-free install for others."
+  },
   "backendMin": "1.0.0",
   "updatedAt": "2026-06-24"
 }

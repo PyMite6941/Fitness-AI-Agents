@@ -99,13 +99,15 @@ Strava OAuth + Fitbit OAuth + file imports (Nike/Garmin/Apple/Google). These ins
 - Pivot off the custom watch → multi-source platform; archived firmware in `watch-archive/`.
 - Live Gradio agent demo (HF), embedded on the landing page; `/demo` public sample dashboard; AI-analysis Export/Copy buttons.
 - `/app` Android download page + `mobile/version.json` + GitHub-based update flow.
-- Backend: `device_tokens` schema, `/device/pair|list|revoke`, `get_user_id_flexible`, `/ingest` accepts device tokens.
-- Android tracker **scaffold** in `mobile/android/`.
+- Backend: `device_tokens` schema, `/device/pair|list|revoke`, `get_user_id_flexible`, `/ingest` accepts device tokens. **Device tokens are stored as SHA-256 hashes** (a DB leak can't forge uploads).
+- Android tracker **scaffold** in `mobile/android/`; iOS (HealthKit) **scaffold** in `mobile/ios/`.
+- **Supabase security verified (2026-06-24):** RLS is **ON for all 7 tables with deny-all** (anon/public key returns 0 rows — proven empirically); backend's `service_role` key bypasses RLS so the app works. The `device_tokens` table **has been applied to Supabase** (with RLS). The frontend does NOT use Supabase directly (auth is Clerk), so the anon key isn't even shipped to clients.
 
-**Not done yet — full, ordered TODO lives in [`mobile/README.md`](mobile/README.md). The critical-path items:**
-1. **Backend go-live for pairing:** apply the `device_tokens` table to Supabase (run the `CREATE TABLE` block in `backend/schema.sql`), then **redeploy the backend HF Space** so `/device/*` + flexible auth are live. Smoke-test pair → ingest.
+**Not done yet — full, ordered TODO lives in [`mobile/README.md`](mobile/README.md) + [`mobile/ios/README.md`](mobile/ios/README.md). The critical-path items:**
+1. **Backend go-live for pairing:** the `device_tokens` table is already applied; just **redeploy the backend HF Space** so `/device/*` + flexible auth + token-hashing are live. Smoke-test pair → ingest.
 2. **Web pairing UI:** add Settings → "Pair a device" (calls `POST /device/pair`, shows token + QR) and a paired-device list with revoke; add `pairDevice/listDevices/revokeDevice` to `frontend/src/lib/api.ts`.
 3. **Android app:** open `mobile/android/` in Android Studio, add launcher icons, build a debug APK, test on a phone; then add GPS routes + step-baseline persistence (details in `mobile/README.md`).
+3b. **iOS app:** open `mobile/ios/FitnessAI/` in Xcode (a Mac), add the HealthKit capability, build to an iPhone. iOS has **no free distribution to others** (personal-team signing = your own phone, 7-day expiry; TestFlight/App Store need the $99/yr program). Details in `mobile/ios/README.md`.
 4. **Publish APK:** drop the signed APK at `frontend/public/fitness-ai.apk`; keep `frontend/public/version.json` in sync (version + apkUrl). The repo is **private**, so the version manifest + APK are served by the **public Vercel site**, NOT GitHub raw/Releases (those 404 for anonymous users). `/app` reads `/version.json`; the Android app reads `https://fitness-ai-agents.vercel.app/version.json`.
 
 The web app is also an installable **PWA** (manifest + service worker), so iPhone/desktop users can "Add to Home Screen"; the `/app` page has an install spot per device (Android APK / iOS PWA + Apple Health / desktop PWA).

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- HealthKit: required usage strings (the app crashes on launch without these) -->
+  <key>NSHealthShareUsageDescription</key>
+  <string>FitnessAI reads your steps, distance, and heart rate from Apple Health to sync them to your account for analysis.</string>
+  <key>NSHealthUpdateUsageDescription</key>
+  <string>FitnessAI does not write to Apple Health.</string>
+
+  <!-- App Transport Security: force HTTPS, no exceptions. -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+  </dict>
+
+  <key>UILaunchScreen</key>
+  <dict/>
+</dict>
+</plist>
