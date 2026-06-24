@@ -985,7 +985,15 @@ class Bots:
                 is_rate_limit = any(x in err_str for x in ("429", "RateLimitError", "rate_limit_exceeded"))
                 is_bad_request = any(x in err_str for x in ("BadRequestError", "invalid_request_error"))
                 is_server_err = any(c in err_str for c in ("402", "401", "503", "529", "500"))
-                is_rotatable = is_404 or is_rate_limit or is_bad_request or is_server_err
+                # Flaky free models often return empty/None content (or crewai rejects
+                # the structured output). litellm/crewai surface this as "Invalid response
+                # from LLM call - None or empty". Treat it as rotatable so one bad model
+                # response doesn't kill the whole run — pick a different model and retry.
+                is_empty_resp = any(x in err_str for x in (
+                    "Invalid response from LLM call", "None or empty",
+                    "Received None", "content is None", "empty response",
+                ))
+                is_rotatable = is_404 or is_rate_limit or is_bad_request or is_server_err or is_empty_resp
 
                 _record_model_outcome(fast_model, False)
                 _record_model_outcome(smart_model, False)
@@ -1000,6 +1008,11 @@ class Bots:
                         _set_cooldown(fast_model, 600)
                         _set_cooldown(smart_model, 600)
                         self._emit("Scheduler", f"UNAVAILABLE fast={fast_model} → 10min cooldown")
+                    elif is_empty_resp:
+                        # Short cooldown — the model is reachable but gave junk this time.
+                        _set_cooldown(fast_model, 45)
+                        _set_cooldown(smart_model, 45)
+                        self._emit("Scheduler", f"EMPTY-RESPONSE fast={fast_model}/smart={smart_model} → 45s cooldown, rotating")
                     else:
                         cooldown_s = _exponential_backoff(attempt)
                         _set_cooldown(fast_model, cooldown_s)
