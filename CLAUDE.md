@@ -106,4 +106,6 @@ Strava OAuth + Fitbit OAuth + file imports (Nike/Garmin/Apple/Google). These ins
 1. **Backend go-live for pairing:** apply the `device_tokens` table to Supabase (run the `CREATE TABLE` block in `backend/schema.sql`), then **redeploy the backend HF Space** so `/device/*` + flexible auth are live. Smoke-test pair → ingest.
 2. **Web pairing UI:** add Settings → "Pair a device" (calls `POST /device/pair`, shows token + QR) and a paired-device list with revoke; add `pairDevice/listDevices/revokeDevice` to `frontend/src/lib/api.ts`.
 3. **Android app:** open `mobile/android/` in Android Studio, add launcher icons, build a debug APK, test on a phone; then add GPS routes + step-baseline persistence (details in `mobile/README.md`).
-4. **Publish APK:** GitHub Release `mobile-v0.1.0` with `fitness-ai.apk`; keep `mobile/version.json` in sync.
+4. **Publish APK:** drop the signed APK at `frontend/public/fitness-ai.apk`; keep `frontend/public/version.json` in sync (version + apkUrl). The repo is **private**, so the version manifest + APK are served by the **public Vercel site**, NOT GitHub raw/Releases (those 404 for anonymous users). `/app` reads `/version.json`; the Android app reads `https://fitness-ai-agents.vercel.app/version.json`.
+
+The web app is also an installable **PWA** (manifest + service worker), so iPhone/desktop users can "Add to Home Screen"; the `/app` page has an install spot per device (Android APK / iOS PWA + Apple Health / desktop PWA).

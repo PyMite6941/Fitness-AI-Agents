@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "versionCode": 1,
     "releaseTag": "mobile-v0.1.0",
-    "apkUrl": "https://github.com/PyMite6941/Fitness-AI-Agents/releases/download/mobile-v0.1.0/fitness-ai.apk",
+    "apkUrl": "https://fitness-ai-agents.vercel.app/fitness-ai.apk",
     "minAndroid": 26,
     "sizeMB": 4,
     "notes": "First tracker build: background steps + GPS, syncs to your account via a pairing token.",

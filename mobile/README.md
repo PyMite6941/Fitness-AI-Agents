@@ -13,8 +13,12 @@ your account and analyzes it on the web when you ask.
 
 ```
 mobile/
-  version.json          # single source of truth for app version + APK URL (read from GitHub)
   android/              # the native Android Studio project (Kotlin)
+frontend/public/
+  version.json          # source of truth for app version + APK URL — served by the
+                        # PUBLIC website (the GitHub repo is private, so raw.github /
+                        # Releases won't load for anonymous users)
+  fitness-ai.apk        # the signed APK once built (drop it here; Vercel serves it)
 ```
 
 ## How the pieces fit
@@ -28,8 +32,9 @@ Phone (TrackingService) --steps/GPS--> Uploader --POST /ingest (Bearer fit_…)-
 - **Pairing:** web app → `POST /device/pair` (Clerk-authed) issues a `fit_…` token →
   user pastes it into the app → stored in the Android Keystore (`Prefs.kt`).
 - **Auth:** `backend/auth.py::get_user_id_flexible` accepts that token OR a Clerk JWT.
-- **Updates:** the app reads `mobile/version.json` from GitHub (`UpdateChecker.kt`) and
-  offers the new APK when `versionCode` there is higher than the installed build.
+- **Updates:** the app reads `version.json` from the public website (`UpdateChecker.kt`,
+  URL baked into `app/build.gradle.kts`) and offers the new APK when `versionCode` there is
+  higher than the installed build. **Not GitHub raw — the repo is private.**
 
 ## Build the APK (you, on a machine with Android Studio)
 
@@ -49,18 +54,20 @@ Phone (TrackingService) --steps/GPS--> Uploader --POST /ingest (Bearer fit_…)-
    keytool -genkey -v -keystore fitnessai.keystore -alias fitnessai -keyalg RSA -keysize 2048 -validity 10000
    ./gradlew assembleRelease       # configure signingConfigs in app/build.gradle.kts first
    ```
-5. **Publish + wire the download:**
-   - Create a GitHub Release tagged `mobile-v0.1.0`, attach the APK as `fitness-ai.apk`.
-   - Confirm the URL matches `mobile/version.json -> androidApp.apkUrl`. The website's
-     `/app` page and the in-app updater both read that file, so a release + a bumped
-     `version.json` is all it takes to ship an update.
+5. **Publish + wire the download (private-repo friendly):**
+   - Copy the signed APK to `frontend/public/fitness-ai.apk` (Vercel serves it publicly at
+     `https://fitness-ai-agents.vercel.app/fitness-ai.apk` — already the `apkUrl` in
+     `frontend/public/version.json`).
+   - Commit + push → Vercel deploys → the `/app` page and the in-app updater both pick it up.
+   - (Alternative: make the GitHub repo public and use GitHub Releases instead — then point
+     `apkUrl` at the release asset. Don't, until you've confirmed no secrets are committed.)
 
 ## Releasing an update later
 
-1. Bump `versionCode` (and `versionName`) in **both** `app/build.gradle.kts` and
-   `mobile/version.json`.
-2. Build + sign the new APK, attach to a new GitHub Release, update `apkUrl`/`releaseTag`
-   in `version.json`, commit, push. Existing installs will detect it on next launch.
+1. Bump `versionCode` (and `versionName`) in **both** `mobile/android/app/build.gradle.kts`
+   and `frontend/public/version.json`.
+2. Build + sign the new APK, replace `frontend/public/fitness-ai.apk`, commit, push.
+   Vercel redeploys and existing installs detect the update on next launch.
 
 ---
 
@@ -101,6 +108,15 @@ token, step-counter foreground service, offline upload queue, GitHub update chec
 - [ ] CI: a GitHub Actions workflow to build + sign the APK and attach it to the Release
       automatically when `mobile/version.json` changes.
 
+**iOS (no native tracker — by Apple design):**
+- [ ] The web app is now an installable PWA (Add to Home Screen). For richer iOS data,
+      consider an **Apple Shortcuts** recipe that reads Health samples and POSTs to `/ingest`
+      with the pairing token (a shared iCloud Shortcut link = "install via the website",
+      no App Store). Document the Shortcut steps on the `/app` page.
+
 **Repo hygiene:**
-- [ ] Add a `.gitignore` under `mobile/android/` for `build/`, `.gradle/`, `local.properties`,
-      and any `*.keystore` (never commit signing keys).
+- [ ] `mobile/android/.gitignore` already covers `build/`, `.gradle/`, `local.properties`,
+      `*.keystore` — never commit signing keys.
+- [ ] When the APK is built, drop it at `frontend/public/fitness-ai.apk` (the public,
+      private-repo-friendly host). The repo is currently **private**, so GitHub raw/Releases
+      do NOT serve to anonymous users — that's why `version.json` lives in `frontend/public/`.

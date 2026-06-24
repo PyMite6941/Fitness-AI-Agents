@@ -15,9 +15,11 @@ android {
         versionName = "0.1.0"       // KEEP IN SYNC with mobile/version.json -> androidApp.version
 
         // The app reads this to know where to POST data and where to check for updates.
+        // version.json is served by the public website (the GitHub repo is private, so
+        // raw.githubusercontent.com / Releases won't load for anonymous users).
         buildConfigField("String", "BACKEND_URL", "\"https://pymite6941-data-analyst-ai-agent.hf.space\"")
         buildConfigField("String", "VERSION_JSON_URL",
-            "\"https://raw.githubusercontent.com/PyMite6941/Fitness-AI-Agents/main/mobile/version.json\"")
+            "\"https://fitness-ai-agents.vercel.app/version.json\"")
     }
 
     buildFeatures { buildConfig = true; viewBinding = true }

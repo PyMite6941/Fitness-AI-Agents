@@ -88,3 +88,12 @@ details.dl-card[open] summary { margin-bottom: 12px; }
 	background: #1a1a1a;
 }
 .dl-sub code { color: #4ade80; background: #000; padding: 1px 6px; border-radius: 4px; font-family: monospace; }
+
+/* per-device install cards */
+.dl-device { opacity: 0.92; }
+.dl-detected {
+	border-color: #ff3c00;
+	box-shadow: 0 0 0 1px rgba(255, 60, 0, 0.4), 0 20px 50px rgba(255, 60, 0, 0.08);
+	opacity: 1;
+}
+.dl-mono { font-family: monospace; }
