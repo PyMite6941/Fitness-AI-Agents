@@ -131,17 +131,21 @@ CREATE TABLE formcoach_readings (
 
 CREATE INDEX idx_fc_readings_session ON formcoach_readings (session_id, ts);
 
--- ── Device pairing tokens (Android tracker app) ──────────────────────────────
+-- ── Device pairing tokens (phone tracker apps: Android + iOS) ─────────────────
 -- A sideloaded phone app can't easily obtain a Clerk JWT, so it authenticates to
 -- /ingest with an opaque, revocable device token issued by /device/pair.
+-- SECURITY: store only a SHA-256 HASH of the token, never the token itself — a DB
+-- leak then cannot be used to forge uploads. The raw token is shown to the user
+-- once at pairing and lives only in the phone's secure storage (Keychain/Keystore).
 CREATE TABLE device_tokens (
     id           BIGSERIAL   PRIMARY KEY,
-    token        TEXT        UNIQUE NOT NULL,   -- "fit_" + 40 hex chars
+    token_hash   TEXT        UNIQUE NOT NULL,   -- sha256(raw token), hex
+    token_hint   TEXT,                          -- "fit_ab12…cd34", display only
     user_id      TEXT        NOT NULL,          -- Clerk sub the token acts as
     device_name  TEXT,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_used_at TIMESTAMPTZ,
     revoked      BOOLEAN     NOT NULL DEFAULT false
 );
-CREATE INDEX idx_device_tokens_user  ON device_tokens (user_id);
-CREATE INDEX idx_device_tokens_token ON device_tokens (token) WHERE revoked = false;
+CREATE INDEX idx_device_tokens_user ON device_tokens (user_id);
+CREATE INDEX idx_device_tokens_hash ON device_tokens (token_hash) WHERE revoked = false;

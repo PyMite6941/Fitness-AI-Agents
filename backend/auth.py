@@ -1,3 +1,4 @@
+import hashlib
 import os
 from datetime import datetime, timezone
 
@@ -13,6 +14,11 @@ bearer = HTTPBearer()
 # Opaque tokens issued to paired phones start with this prefix so we can route
 # them to the device-token path instead of Clerk JWT verification.
 DEVICE_TOKEN_PREFIX = "fit_"
+
+
+def hash_device_token(token: str) -> str:
+    """SHA-256 of the raw token. Only the hash is stored, so a DB leak can't forge uploads."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 CLERK_JWKS_URL    = os.getenv("CLERK_JWKS_URL")
 CLERK_ISSUER_URL  = os.getenv("CLERK_ISSUER_URL", "")  # e.g. https://pretty-bird-74.clerk.accounts.dev
@@ -56,11 +62,12 @@ def get_user_id(payload: dict = Depends(verify_token)) -> str:
 
 
 async def _user_id_from_device_token(token: str) -> str:
+    token_hash = hash_device_token(token)
     db = await get_db()
     res = (
         await db.table("device_tokens")
         .select("user_id, revoked")
-        .eq("token", token)
+        .eq("token_hash", token_hash)
         .limit(1)
         .execute()
     )
@@ -71,7 +78,7 @@ async def _user_id_from_device_token(token: str) -> str:
     try:
         await db.table("device_tokens").update(
             {"last_used_at": datetime.now(timezone.utc).isoformat()}
-        ).eq("token", token).execute()
+        ).eq("token_hash", token_hash).execute()
     except Exception:
         pass
     return rows[0]["user_id"]

@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from auth import get_user_id, DEVICE_TOKEN_PREFIX
+from auth import get_user_id, DEVICE_TOKEN_PREFIX, hash_device_token
 from db import get_db
 
 router = APIRouter()
@@ -28,13 +28,14 @@ class RevokeRequest(BaseModel):
 
 @router.post("/pair")
 async def pair_device(body: PairRequest, user_id: str = Depends(get_user_id)):
-    """Issue a new device token for the signed-in user. Show this to the phone once."""
+    """Issue a new device token for the signed-in user. Returned ONCE; only its hash is stored."""
     token = DEVICE_TOKEN_PREFIX + secrets.token_hex(20)
     db = await get_db()
     await db.table("device_tokens").insert({
-        "token": token,
+        "token_hash": hash_device_token(token),
+        "token_hint": f"{token[:8]}…{token[-4:]}",
         "user_id": user_id,
-        "device_name": (body.device_name or "Android phone")[:64],
+        "device_name": (body.device_name or "Phone")[:64],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }).execute()
     return {"token": token}
@@ -42,21 +43,16 @@ async def pair_device(body: PairRequest, user_id: str = Depends(get_user_id)):
 
 @router.get("/list")
 async def list_devices(user_id: str = Depends(get_user_id)):
-    """Paired devices for this user. Token is masked — never returned in full."""
+    """Paired devices for this user. Only the stored hint is shown — the token is never stored or returned."""
     db = await get_db()
     res = (
         await db.table("device_tokens")
-        .select("id, token, device_name, created_at, last_used_at, revoked")
+        .select("id, token_hint, device_name, created_at, last_used_at, revoked")
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .execute()
     )
-    devices = []
-    for r in res.data or []:
-        t = r.pop("token", "")
-        r["token_hint"] = f"{t[:8]}…{t[-4:]}" if len(t) > 12 else "…"
-        devices.append(r)
-    return {"devices": devices}
+    return {"devices": res.data or []}
 
 
 @router.post("/revoke")
