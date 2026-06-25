@@ -190,6 +190,7 @@ export default function FitnessAI() {
 				<div className='footer-col'>
 					<span className='nav-logo'>FitnessAI</span>
 					<p>© 2026 FitnessAI. All rights reserved.</p>
+					<a href='/privacy' className='footer-privacy'>Privacy &amp; your data</a>
 				</div>
 				<div className='footer-links'>
 					<div className='footer-group'>

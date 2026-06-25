@@ -6,6 +6,24 @@ from collections import defaultdict
 
 router = APIRouter()
 
+# Every table that stores per-user data — deleting these wipes the account's data.
+_USER_TABLES = ["watch_data", "routes", "analyses", "coach_plans",
+                "user_integrations", "device_tokens", "ai_usage"]
+
+
+@router.delete("/data")
+async def delete_my_data(user_id: str = Depends(get_user_id)):
+    """Permanently delete ALL of this user's data (GDPR-style erase)."""
+    db = await get_db()
+    deleted = {}
+    for table in _USER_TABLES:
+        try:
+            res = await db.table(table).delete().eq("user_id", user_id).execute()
+            deleted[table] = len(res.data or [])
+        except Exception:
+            deleted[table] = "error"
+    return {"deleted": deleted}
+
 
 @router.get("/me")
 async def get_me(user_id: str = Depends(get_user_id)):

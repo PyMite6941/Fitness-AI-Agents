@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from auth import get_user_id
 from db import get_db
 from llm_lite import complete, LLMUnavailable
+from ratelimit import enforce_ai_limit
 
 router = APIRouter()
 
@@ -40,7 +41,8 @@ async def _llm_json(system: str, user: str) -> tuple[dict, dict]:
     """One structured call across the resilient model pool. Returns (plan, quota)."""
     msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     try:
-        content, quota = await complete(msgs, json_mode=True, max_tokens=4000)
+        # High budget so even a 16-week plan finishes as complete, valid JSON.
+        content, quota = await complete(msgs, json_mode=True, max_tokens=6000)
     except LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
     try:
@@ -115,6 +117,7 @@ async def create_plan(body: PlanRequest, user_id: str = Depends(get_user_id)):
     goal  = (body.goal or "").strip()[:300]
     if not goal:
         raise HTTPException(status_code=400, detail="Tell the coach your goal.")
+    usage = await enforce_ai_limit(user_id)
     db = await get_db()
     summary = await _recent_summary(db, user_id)
     system, user = _build_plan_prompt(goal, weeks, summary)
@@ -132,6 +135,7 @@ async def create_plan(body: PlanRequest, user_id: str = Depends(get_user_id)):
     saved = (res.data or [record])[0]
     _annotate_progress(saved["plan"], start, weeks, set())
     saved["quota"] = quota
+    saved["usage"] = usage
     return saved
 
 
@@ -162,6 +166,7 @@ async def adapt_plan(user_id: str = Depends(get_user_id)):
     plan_row = await _active(db, user_id)
     if not plan_row:
         raise HTTPException(status_code=404, detail="No active plan to adapt.")
+    await enforce_ai_limit(user_id)
     summary = await _recent_summary(db, user_id)
     start = date.fromisoformat(plan_row["start_date"])
     cur_week = max(1, min(plan_row["weeks"], (date.today() - start).days // 7 + 1))

@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from auth import get_user_id
 from db import get_db
 from llm_lite import complete, LLMUnavailable
+from ratelimit import enforce_ai_limit
 
 router = APIRouter()
 
@@ -58,6 +59,7 @@ async def _context(db, user_id: str) -> str:
 async def chat(body: ChatRequest, user_id: str = Depends(get_user_id)):
     if not body.messages:
         raise HTTPException(status_code=400, detail="No message.")
+    usage = await enforce_ai_limit(user_id)
     db = await get_db()
     ctx = await _context(db, user_id)
     system = {
@@ -71,7 +73,8 @@ async def chat(body: ChatRequest, user_id: str = Depends(get_user_id)):
     history = [{"role": ("assistant" if m.get("role") == "assistant" else "user"),
                 "content": str(m.get("content", ""))[:2000]} for m in body.messages[-12:]]
     try:
-        reply, quota = await complete([system] + history, max_tokens=900, temperature=0.5)
+        # Generous token budget so answers finish their thought (never truncated mid-sentence).
+        reply, quota = await complete([system] + history, max_tokens=1600, temperature=0.5)
     except LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
-    return {"reply": reply, "quota": quota}
+    return {"reply": reply, "quota": quota, "usage": usage}

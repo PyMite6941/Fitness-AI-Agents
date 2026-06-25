@@ -11,6 +11,7 @@ import DemoDashboard from './pages/DemoDashboard.jsx'
 import DownloadApp from './pages/DownloadApp.jsx'
 import Coach from './pages/Coach.jsx'
 import Chat from './pages/Chat.jsx'
+import Privacy from './pages/Privacy.jsx'
 
 function ProtectedRoute({ children }) {
   const { isSignedIn, isLoaded } = useAuth()
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/" element={<App />} />
           <Route path="/demo" element={<DemoDashboard />} />
           <Route path="/app" element={<DownloadApp />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
           <Route path="/log" element={<ProtectedRoute><LogWorkout /></ProtectedRoute>} />

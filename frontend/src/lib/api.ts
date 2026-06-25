@@ -102,6 +102,9 @@ export const api = {
 	chat: (token: string, messages: object[]) =>
 		request('/chat/', token, { method: 'POST', body: JSON.stringify({ messages }) }),
 
+	deleteMyData: (token: string) =>
+		request('/user/data', token, { method: 'DELETE' }),
+
 	demoSeed: (token: string) =>
 		request('/demo/seed', token, { method: 'POST' }),
 

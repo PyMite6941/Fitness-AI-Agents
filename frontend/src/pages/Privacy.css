@@ -1,0 +1,25 @@
+.privacy-page {
+	min-height: 100vh; background: #0a0a0a; color: #fff;
+	max-width: 720px; margin: 0 auto; padding: 24px 24px 80px; line-height: 1.6;
+}
+.privacy-back { background: none; border: 0; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 0.9rem; padding: 8px 0; }
+.privacy-back:hover { color: #ff3c00; }
+.privacy-page h1 { font-size: 2rem; margin: 14px 0 6px; }
+.privacy-lead { color: rgba(255,255,255,0.55); margin-bottom: 24px; }
+.privacy-page section { margin-bottom: 24px; }
+.privacy-page h2 { font-size: 1.1rem; margin-bottom: 8px; color: #ff3c00; }
+.privacy-page p, .privacy-page li { color: rgba(255,255,255,0.78); }
+.privacy-page ul { padding-left: 20px; }
+.privacy-page li { margin-bottom: 6px; }
+
+.privacy-danger { border: 1px solid rgba(239,68,68,0.35); border-radius: 12px; padding: 20px; background: rgba(239,68,68,0.04); }
+.privacy-danger h2 { color: #ef4444; }
+.privacy-del-btn {
+	background: #ef4444; color: #fff; border: 0; border-radius: 8px; padding: 12px 20px;
+	font-weight: 700; cursor: pointer; margin-top: 8px;
+}
+.privacy-del-btn:disabled { opacity: 0.6; cursor: default; }
+.privacy-done { color: #22c55e; margin-top: 12px; }
+.privacy-err { color: #fca5a5; margin-top: 12px; }
+.privacy-muted { color: rgba(255,255,255,0.4); }
+.privacy-foot { color: rgba(255,255,255,0.35); font-size: 0.85rem; margin-top: 32px; }
