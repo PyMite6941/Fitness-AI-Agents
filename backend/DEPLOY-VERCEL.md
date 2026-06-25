@@ -51,6 +51,19 @@ On the **frontend** Vercel project (`fitness-ai-agents`): set
 - From the web app: sign in, open the dashboard → data loads (charts/streak/sources).
 - Phone `/ingest` with a pairing token → row in `watch_data`.
 
-## OAuth callback URLs (if you use Strava/Fitbit)
-Update the callback URLs in the Strava/Google consoles to the new `BACKEND_URL`
-(`{BACKEND_URL}/integrations/strava/callback`, etc.).
+## OAuth redirect URIs — register these in each provider's console
+The backend builds callbacks from `BACKEND_URL` (now the Vercel backend). The code is
+correct; the provider consoles must whitelist the EXACT matching URI/domain:
+
+- **Google Health (the "Fitbit" connect button uses Google Health):**
+  Google Cloud Console → your project → APIs & Services → Credentials → your OAuth 2.0
+  Client → **Authorized redirect URIs**, add exactly:
+  `https://backend-seven-topaz-23.vercel.app/integrations/fitbit/callback`
+  Also: the **OAuth consent screen** must be configured, and while the app is in "Testing"
+  mode only added **test users** can authorize (publish it for everyone). Google requires
+  HTTPS (Vercel is HTTPS ✓).
+- **Strava:** https://www.strava.com/settings/api → **Authorization Callback Domain**
+  (domain only, no path): `backend-seven-topaz-23.vercel.app`
+
+These must match character-for-character or the provider returns `redirect_uri_mismatch`.
+File imports (Nike/Garmin/Apple/Google Fit/.fit/.tcx/.gpx) need none of this.

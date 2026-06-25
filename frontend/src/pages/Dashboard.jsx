@@ -277,29 +277,33 @@ export default function Dashboard() {
 						{/* ── OVERVIEW ── */}
 						{tab === 'Overview' && (
 							<>
-								{/* Welcome prompt when empty */}
+								{/* Onboarding when empty */}
 								{noData && (
 									<div className='welcome-card'>
+										<span className='welcome-step'>GET STARTED</span>
 										<h2 className='welcome-title'>Welcome to FitnessAI</h2>
 										<p className='welcome-desc'>
-											Your data, unified. Connect your platforms or load sample data to see how it works.
+											Two ways to begin — see it instantly with sample data, or bring your own.
+											No device or account at any source needed: most apps export a file you just upload.
 										</p>
 										<div className='welcome-actions'>
 											<button className='hero-btn' onClick={handleDemoSeed} disabled={seeding}>
 												{seeding ? 'LOADING…' : '⚡ LOAD SAMPLE DATA'}
 											</button>
 											<a href='/log' className='hero-btn-ghost' style={{ textDecoration: 'none', display: 'inline-block' }}>
-												+ CONNECT A PLATFORM
+												+ CONNECT OR IMPORT A FILE
 											</a>
 										</div>
+										<div className='welcome-next'>
+											<span className='welcome-next-label'>Once you have data, explore:</span>
+											<a href='/coach'>✦ AI Coach</a>
+											<a href='/chat'>💬 Chat with your data</a>
+											<button className='welcome-next-link' onClick={() => setTab('AI Analysis')}>📊 AI Analysis</button>
+										</div>
 										<div className='welcome-sources'>
-											<span className='welcome-tag'>Strava</span>
-											<span className='welcome-tag'>Fitbit</span>
-											<span className='welcome-tag'>Garmin</span>
-											<span className='welcome-tag'>Apple Health</span>
-											<span className='welcome-tag'>Nike Run Club</span>
-											<span className='welcome-tag'>Google Fit</span>
-											<span className='welcome-tag'>Manual</span>
+											{['Strava', 'Fitbit', 'Garmin', 'Apple Health', 'Nike Run Club', 'Google Fit', 'COROS', 'Suunto', 'Wahoo', 'Polar', 'Zwift', 'Peloton', '.fit / .tcx / .gpx', 'Manual'].map(s => (
+												<span className='welcome-tag' key={s}>{s}</span>
+											))}
 										</div>
 									</div>
 								)}

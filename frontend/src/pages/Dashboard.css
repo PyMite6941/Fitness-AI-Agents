@@ -970,3 +970,13 @@
 	color: #ff3c00;
 	background: rgba(255, 60, 0, 0.08);
 }
+
+/* Onboarding welcome extras */
+.welcome-step { font-size: 0.72rem; letter-spacing: 0.1em; color: #ff3c00; font-weight: 700; display: block; margin-bottom: 8px; }
+.welcome-next { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 18px 0 6px; }
+.welcome-next-label { color: rgba(255,255,255,0.45); font-size: 0.85rem; }
+.welcome-next a, .welcome-next-link {
+	color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.9rem; font-weight: 600;
+	background: rgba(255,255,255,0.05); border: 1px solid #2a2a2a; border-radius: 20px; padding: 6px 14px; cursor: pointer;
+}
+.welcome-next a:hover, .welcome-next-link:hover { border-color: #ff3c00; color: #ff3c00; }
