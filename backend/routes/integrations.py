@@ -32,6 +32,25 @@ STRAVA_TOKEN_URL   = "https://www.strava.com/oauth/token"
 STRAVA_ACTIVITIES  = "https://www.strava.com/api/v3/athlete/activities"
 STRAVA_STREAMS_URL = "https://www.strava.com/api/v3/activities/{id}/streams"
 
+# ── Oura (OAuth2, API v2) — sleep, HRV, readiness, workouts ──────────────────
+OURA_CLIENT_ID     = os.getenv("OURA_CLIENT_ID", "")
+OURA_CLIENT_SECRET = os.getenv("OURA_CLIENT_SECRET", "")
+OURA_AUTH_URL  = "https://cloud.ouraring.com/oauth/authorize"
+OURA_TOKEN_URL = "https://api.ouraring.com/oauth/token"
+OURA_API       = "https://api.ouraring.com/v2/usercollection"
+OURA_SCOPES    = "daily heartrate workout personal session"
+
+# ── Whoop (OAuth2, developer v1) — recovery, HRV, sleep, strain ──────────────
+WHOOP_CLIENT_ID     = os.getenv("WHOOP_CLIENT_ID", "")
+WHOOP_CLIENT_SECRET = os.getenv("WHOOP_CLIENT_SECRET", "")
+WHOOP_AUTH_URL  = "https://api.prod.whoop.com/oauth/oauth2/auth"
+WHOOP_TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
+WHOOP_API       = "https://api.prod.whoop.com/developer/v1"
+WHOOP_SCOPES    = "read:recovery read:sleep read:workout read:cycles offline"
+# Whoop sport_id -> our type (common ones; default "other")
+WHOOP_SPORT_MAP = {0: "running", 1: "cycling", 16: "swimming", 33: "walking",
+                   45: "weightlifting", 43: "hiking"}
+
 NRC_TYPE_MAP = {
     "nike.run.gps":       "running",
     "nike.run.manual":    "running",
@@ -708,6 +727,228 @@ async def _refresh_fitbit_token_if_needed(db, integration: dict) -> str:
         }).eq("id", integration["id"]).execute()
     )
     return data["access_token"]
+
+
+# ── Generic OAuth2 helpers (Oura, Whoop) ──────────────────────────────────────
+# These share the standard authorization-code flow; only URLs/scopes/fields differ.
+
+async def _oauth_store(db, user_id: str, provider: str, data: dict, default_ttl: int):
+    await db.table("user_integrations").upsert({
+        "user_id":       user_id,
+        "provider":      provider,
+        "access_token":  data["access_token"],
+        "refresh_token": data.get("refresh_token"),
+        "expires_at":    (datetime.now(timezone.utc) + timedelta(seconds=data.get("expires_in", default_ttl))).isoformat(),
+        "updated_at":    datetime.now(timezone.utc).isoformat(),
+    }, on_conflict="user_id,provider").execute()
+
+
+async def _oauth_refresh(db, integ: dict, provider: str, token_url: str, cid: str, secret: str, default_ttl: int) -> str:
+    if datetime.now(timezone.utc) < datetime.fromisoformat(integ["expires_at"]):
+        return integ["access_token"]
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(token_url, data={
+            "grant_type": "refresh_token", "refresh_token": integ["refresh_token"],
+            "client_id": cid, "client_secret": secret,
+        })
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Failed to refresh {provider} token")
+    d = resp.json()
+    await db.table("user_integrations").update({
+        "access_token":  d["access_token"],
+        "refresh_token": d.get("refresh_token", integ["refresh_token"]),
+        "expires_at":    (datetime.now(timezone.utc) + timedelta(seconds=d.get("expires_in", default_ttl))).isoformat(),
+        "updated_at":    datetime.now(timezone.utc).isoformat(),
+    }).eq("user_id", integ["user_id"]).eq("provider", provider).execute()
+    return d["access_token"]
+
+
+# ── Oura ──────────────────────────────────────────────────────────────────────
+@router.get("/oura/connect")
+async def oura_connect(user_id: str = Depends(get_user_id)):
+    cb = f"{BACKEND_URL}/integrations/oura/callback"
+    url = (f"{OURA_AUTH_URL}?response_type=code&client_id={OURA_CLIENT_ID}"
+           f"&redirect_uri={urllib.parse.quote(cb, safe='')}"
+           f"&scope={urllib.parse.quote(OURA_SCOPES)}&state={_make_state(user_id)}")
+    return {"url": url}
+
+
+@router.get("/oura/callback")
+async def oura_callback(code: str = "", state: str = "", error: str = ""):
+    if error or not code:
+        return RedirectResponse(f"{FRONTEND_URL}/log?error={error or 'access_denied'}")
+    user_id = _verify_state(state)
+    if not user_id:
+        return RedirectResponse(f"{FRONTEND_URL}/log?error=invalid_state")
+    cb = f"{BACKEND_URL}/integrations/oura/callback"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(OURA_TOKEN_URL, data={
+            "grant_type": "authorization_code", "code": code, "redirect_uri": cb,
+            "client_id": OURA_CLIENT_ID, "client_secret": OURA_CLIENT_SECRET,
+        })
+    if resp.status_code != 200:
+        return RedirectResponse(f"{FRONTEND_URL}/log?error=token_exchange_failed")
+    db = await get_db()
+    await _oauth_store(db, user_id, "oura", resp.json(), 86400)
+    return RedirectResponse(f"{FRONTEND_URL}/log?connected=oura")
+
+
+@router.post("/oura/sync")
+async def oura_sync(user_id: str = Depends(get_user_id)):
+    db = await get_db()
+    integ = await db.table("user_integrations").select("*").eq("user_id", user_id).eq("provider", "oura").single().execute()
+    if not integ.data:
+        return {"synced": 0, "error": "Oura not connected"}
+    token = await _oauth_refresh(db, integ.data, "oura", OURA_TOKEN_URL, OURA_CLIENT_ID, OURA_CLIENT_SECRET, 86400)
+    params  = {"start_date": (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d"),
+               "end_date":   datetime.now(timezone.utc).strftime("%Y-%m-%d")}
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient(timeout=30) as client:
+        w_resp = await client.get(f"{OURA_API}/workout", headers=headers, params=params)
+        s_resp = await client.get(f"{OURA_API}/sleep",   headers=headers, params=params)
+
+    rows: list[dict] = []
+    for wk in (w_resp.json().get("data", []) if w_resp.status_code == 200 else []):
+        st = wk.get("start_datetime")
+        if not st:
+            continue
+        try:
+            start_dt = datetime.fromisoformat(st)
+        except ValueError:
+            continue
+        dur = None
+        if wk.get("end_datetime"):
+            try:
+                dur = round((datetime.fromisoformat(wk["end_datetime"]) - start_dt).total_seconds() / 60, 1)
+            except ValueError:
+                pass
+        rows.append({
+            "user_id": user_id, "type": "workout", "device": "oura",
+            "timestamp": start_dt.isoformat(),
+            "workout_type": _classify_activity(wk.get("activity", "")),
+            "duration_minutes": dur,
+            "distance_meters": wk.get("distance"),
+            "calories_burned": wk.get("calories"),
+        })
+    for sl in (s_resp.json().get("data", []) if s_resp.status_code == 200 else []):
+        bed = sl.get("bedtime_start")
+        if not bed:
+            continue
+        total = sl.get("total_sleep_duration")  # seconds
+        rows.append({
+            "user_id": user_id, "type": "reading", "device": "oura",
+            "timestamp": bed,
+            "sleep_hours": round(total / 3600, 2) if total else None,
+            "hrv": sl.get("average_hrv"),
+            "heart_rate": sl.get("average_heart_rate"),
+        })
+    if rows:
+        await db.table("watch_data").insert(rows).execute()
+    return {"synced": len([r for r in rows if r["type"] == "workout"]),
+            "sleep_synced": len([r for r in rows if r["type"] == "reading"])}
+
+
+# ── Whoop ─────────────────────────────────────────────────────────────────────
+@router.get("/whoop/connect")
+async def whoop_connect(user_id: str = Depends(get_user_id)):
+    cb = f"{BACKEND_URL}/integrations/whoop/callback"
+    url = (f"{WHOOP_AUTH_URL}?response_type=code&client_id={WHOOP_CLIENT_ID}"
+           f"&redirect_uri={urllib.parse.quote(cb, safe='')}"
+           f"&scope={urllib.parse.quote(WHOOP_SCOPES)}&state={_make_state(user_id)}")
+    return {"url": url}
+
+
+@router.get("/whoop/callback")
+async def whoop_callback(code: str = "", state: str = "", error: str = ""):
+    if error or not code:
+        return RedirectResponse(f"{FRONTEND_URL}/log?error={error or 'access_denied'}")
+    user_id = _verify_state(state)
+    if not user_id:
+        return RedirectResponse(f"{FRONTEND_URL}/log?error=invalid_state")
+    cb = f"{BACKEND_URL}/integrations/whoop/callback"
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(WHOOP_TOKEN_URL, data={
+            "grant_type": "authorization_code", "code": code, "redirect_uri": cb,
+            "client_id": WHOOP_CLIENT_ID, "client_secret": WHOOP_CLIENT_SECRET,
+        })
+    if resp.status_code != 200:
+        return RedirectResponse(f"{FRONTEND_URL}/log?error=token_exchange_failed")
+    db = await get_db()
+    await _oauth_store(db, user_id, "whoop", resp.json(), 3600)
+    return RedirectResponse(f"{FRONTEND_URL}/log?connected=whoop")
+
+
+@router.post("/whoop/sync")
+async def whoop_sync(user_id: str = Depends(get_user_id)):
+    db = await get_db()
+    integ = await db.table("user_integrations").select("*").eq("user_id", user_id).eq("provider", "whoop").single().execute()
+    if not integ.data:
+        return {"synced": 0, "error": "Whoop not connected"}
+    token = await _oauth_refresh(db, integ.data, "whoop", WHOOP_TOKEN_URL, WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, 3600)
+    start   = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    headers = {"Authorization": f"Bearer {token}"}
+    params  = {"start": start, "limit": 25}
+    async with httpx.AsyncClient(timeout=30) as client:
+        w_resp = await client.get(f"{WHOOP_API}/activity/workout", headers=headers, params=params)
+        s_resp = await client.get(f"{WHOOP_API}/activity/sleep",   headers=headers, params=params)
+        r_resp = await client.get(f"{WHOOP_API}/recovery",         headers=headers, params=params)
+
+    rows: list[dict] = []
+    for wk in (w_resp.json().get("records", []) if w_resp.status_code == 200 else []):
+        st = wk.get("start")
+        if not st:
+            continue
+        try:
+            start_dt = datetime.fromisoformat(st.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        dur = None
+        if wk.get("end"):
+            try:
+                dur = round((datetime.fromisoformat(wk["end"].replace("Z", "+00:00")) - start_dt).total_seconds() / 60, 1)
+            except ValueError:
+                pass
+        score = wk.get("score") or {}
+        kj = score.get("kilojoule")
+        rows.append({
+            "user_id": user_id, "type": "workout", "device": "whoop",
+            "timestamp": start_dt.isoformat(),
+            "workout_type": WHOOP_SPORT_MAP.get(wk.get("sport_id"), "other"),
+            "duration_minutes": dur,
+            "distance_meters": score.get("distance_meter"),
+            "calories_burned": round(kj / 4.184) if kj else None,
+            "avg_heart_rate": score.get("average_heart_rate"),
+            "max_heart_rate": score.get("max_heart_rate"),
+        })
+    # Sleep duration from the sleep collection; HRV/resting HR from recovery.
+    for sl in (s_resp.json().get("records", []) if s_resp.status_code == 200 else []):
+        st = sl.get("start")
+        score = sl.get("score") or {}
+        stage = score.get("stage_summary") or {}
+        in_bed = stage.get("total_in_bed_time_milli")
+        awake  = stage.get("total_awake_time_milli") or 0
+        if not st or in_bed is None:
+            continue
+        rows.append({
+            "user_id": user_id, "type": "reading", "device": "whoop",
+            "timestamp": st,
+            "sleep_hours": round((in_bed - awake) / 3_600_000, 2),
+        })
+    for rec in (r_resp.json().get("records", []) if r_resp.status_code == 200 else []):
+        score = rec.get("score") or {}
+        ts = rec.get("created_at") or rec.get("updated_at")
+        if not ts or score.get("hrv_rmssd_milli") is None:
+            continue
+        rows.append({
+            "user_id": user_id, "type": "reading", "device": "whoop",
+            "timestamp": ts,
+            "hrv": score.get("hrv_rmssd_milli"),
+            "heart_rate": score.get("resting_heart_rate"),
+        })
+    if rows:
+        await db.table("watch_data").insert(rows).execute()
+    return {"synced": len([r for r in rows if r["type"] == "workout"]),
+            "sleep_synced": len([r for r in rows if r["type"] == "reading"])}
 
 
 # ── Garmin (GPX / TCX file import) ───────────────────────────────────────────
