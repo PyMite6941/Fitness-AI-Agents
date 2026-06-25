@@ -40,14 +40,21 @@ The custom ESP32-C3 smartwatch firmware has been archived. It can be rebuilt lat
 - **`watch_data`** holds BOTH readings and workouts, discriminated by a `type` column (`'reading'` | `'workout'`). Reading columns (heart_rate, steps, sleep…) and workout columns (workout_type, duration_minutes, avg/max_heart_rate, calories_burned, distance_meters…) live in the same table.
 - **`routes`** holds GPS workouts — a `coordinates` JSONB array plus computed `distance_meters`/`duration_seconds`/`pace`.
 - **`analyses`** stores AI results (the full `FormattedOutput` payload for rich rendering).
-- **`user_integrations`** holds OAuth tokens (Strava/Fitbit).
-- All rows are keyed by Clerk `user_id` (a TEXT `sub` claim). There is no users table.
+- **`user_integrations`** holds OAuth tokens (Strava/Fitbit). **`device_tokens`** = hashed phone-pairing tokens. **`coach_plans`** = AI Coach plans (JSONB `plan`, RLS on). **`ai_usage`** = per-user/day AI call counter for rate limiting.
+- All rows are keyed by Clerk `user_id` (a TEXT `sub` claim). There is no users table. **RLS is ON (deny-all) for every table** — only the backend's `service_role` key reads/writes; the anon key returns nothing.
 
 ### API (`backend/main.py` mounts routers under prefixes)
-`/watch` (watch.py), `/ingest` (ingest.py — generic device data ingestion, any wearable), `/routes` (gps.py), `/user` (user.py — includes `/user/sources` for connected device/integration breakdown), `/charts` (charts.py), `/analyze` (analysis.py), `/integrations` (integrations.py), `/demo` (demo.py), `/device` (device.py — pairing tokens for the Android app), `/health`.
+`/watch`, `/ingest` (generic device ingestion, any wearable — accepts a device token), `/routes` (gps.py), `/user` (incl. `/user/sources` and `DELETE /user/data` = GDPR erase), `/charts`, `/analyze` (heavy CrewAI — **503 on Vercel**, runs in the demo Space / locally), `/integrations`, `/demo`, `/device` (phone pairing tokens), `/coach` (AI Coach plans), `/insights` (Readiness + Watchdog), `/chat` (chat with your data), `/health`.
+
+### AI features beyond `/analyze` (the light, Vercel-friendly ones)
+`/analyze` is the heavy 8-agent CrewAI pipeline (demo Space only). The newer AI features are **single LLM calls** via `backend/llm_lite.py` (rotates across a pool of free Groq + OpenRouter models on 429/error, reads rate-limit headers, returns remaining quota) so they run on the light Vercel backend:
+- **`/coach`** (`routes/coach.py`): goal → AI weekly plan (`coach_plans`), progress matched to real workouts, `POST /coach/adapt` re-plans. JSON-mode call.
+- **`/insights`** (`routes/insights.py`): **deterministic** (no AI) — Readiness score (HRV/resting-HR trend, sleep, acute:chronic load) + Watchdog alerts.
+- **`/chat`** (`routes/chat.py`): conversational, grounded in a server-built data summary.
+- **Rate limiting** (`backend/ratelimit.py` + Postgres `bump_ai_usage()`): generous **200 AI calls/user/day** guardrail so one account can't drain the shared free model pool. Coach/Chat call `enforce_ai_limit`; usage is returned in responses.
 
 ### Device pairing & flexible auth (`backend/auth.py`, `backend/routes/device.py`)
-The Android tracker can't get a Clerk JWT, so it uses an opaque **device token**. `POST /device/pair` (Clerk-authed) issues a `fit_…` token stored in `device_tokens` (see `schema.sql`); `GET /device/list` + `POST /device/revoke` manage them. `get_user_id_flexible` accepts EITHER a Clerk JWT OR a `fit_…` token and is used by `/ingest`, so phone uploads land in `watch_data` under the user's `user_id`. **`device_tokens` table must be applied to Supabase + backend redeployed before this works (see TODO).**
+The Android tracker can't get a Clerk JWT, so it uses an opaque **device token**. `POST /device/pair` (Clerk-authed) issues a `fit_…` token stored in `device_tokens` (see `schema.sql`); `GET /device/list` + `POST /device/revoke` manage them. `get_user_id_flexible` accepts EITHER a Clerk JWT OR a `fit_…` token and is used by `/ingest`, so phone uploads land in `watch_data` under the user's `user_id`. Tokens are stored as **SHA-256 hashes** (`backend/auth.py::hash_device_token`) — a DB leak can't forge uploads. **This is live** (`device_tokens` applied + backend deployed; verified end-to-end).
 
 ### Data source tracking
 Every row in `watch_data` has a `device` column that records the source (e.g. `strava`, `apple_health`, `garmin`, `fitbit`, `manual`). The `/user/sources` endpoint returns a breakdown with counts and recency per source. The AI analysis pipeline receives the `device` column in its CSV input and gets a `source_hint` appended to the user's context so results can reference specific sources.
@@ -76,10 +83,10 @@ Distance, pace, and calories are computed **server-side**, not on the device:
 Returns a structured JSON `FormattedOutput` with 7 output types (chart/table/metrics/comparison/heatmap/code/report). CrewAI is synchronous, so `analysis.py` runs it in a thread executor (`run_in_executor`) to avoid blocking the event loop. Models are **rotated across free Groq + OpenRouter pools** (`_FAST_MODELS` / `_SMART_MODELS`) via litellm, with patches for Groq quirks. The result is persisted to `analyses` and rendered by the Dashboard's many `output_type` branches.
 
 ### Integrations (`backend/routes/integrations.py`)
-Strava OAuth + Fitbit OAuth + file imports (Nike/Garmin/Apple/Google). These insert workout rows and route rows **directly** into the tables (they do not call `gps.save_route`), so they are unaffected by the `record_workout` mirror logic.
+Strava OAuth + Fitbit/Google-Health OAuth + file imports. **Universal `/integrations/file/import`** takes `.fit` (via `fitdecode`) / `.tcx` / `.gpx` from any app (COROS, Suunto, Wahoo, Polar, Zwift, Peloton, MapMyRun, Garmin…), tagged by a `source` field — plus the format-specific Nike/Apple/Google importers. The parsers (`_parse_gpx`/`_parse_tcx`/`_parse_fit`) take a `source` arg for attribution. (Oura/WHOOP OAuth was removed — they need paid accounts to register a dev app.) GOTCHA fixed here: a childless ElementTree element is falsy, so `el.find(...) or el.find(...)` silently dropped GPX heart rate — use explicit `is None`.
 
 ### Frontend (`frontend/src`)
-`main.jsx` wires Clerk + react-router (`/`, `/dashboard`, `/routes`, `/log`, with `ProtectedRoute`). All API calls go through `src/lib/api.ts` (single `request()` helper that injects the Clerk bearer token). `VITE_API_URL` selects the backend.
+`main.jsx` wires Clerk + react-router. **Protected** routes: `/dashboard`, `/routes`, `/log`, `/coach` (AI Coach + Readiness + Watchdog hub), `/chat` (chat with your data). **Public**: `/` (landing), `/demo` (no-auth sample dashboard), `/app` (PWA install + Android download), `/privacy` (policy + data-delete button). The Dashboard sidebar links to Coach/Chat/Routes/Log and shows an onboarding card when empty. All API calls go through `src/lib/api.ts`; `VITE_API_URL` points at the Vercel backend. The whole app is an installable **PWA** (manifest + service worker + heartbeat icon).
 
 ## Deployment
 
@@ -93,21 +100,19 @@ Strava OAuth + Fitbit OAuth + file imports (Nike/Garmin/Apple/Google). These ins
 - `backend/.env` ships with **placeholder** model keys. Real keys live in the deployed Space secrets (and were borrowed from sibling projects during setup). HF Space secrets can't be read back via API.
 - Gradio Space dep set that builds: **gradio 5.27.1 + crewai 1.14.5 + litellm 1.85.x**, Python 3.11 (see `huggingface_space/requirements.txt` comments for why each pin). Don't gitignore `bots.py` inside `huggingface_space/` — the HF uploader honors it and drops the file.
 
-## Status & Handoff TODO (2026-06-24)
+## Status & Handoff TODO (2026-06-25)
 
-**Shipped + pushed to `main` (frontend auto-deploys on Vercel):**
-- Pivot off the custom watch → multi-source platform; archived firmware in `watch-archive/`.
-- Live Gradio agent demo (HF), embedded on the landing page; `/demo` public sample dashboard; AI-analysis Export/Copy buttons.
-- `/app` Android download page + `mobile/version.json` + GitHub-based update flow.
-- Backend: `device_tokens` schema, `/device/pair|list|revoke`, `get_user_id_flexible`, `/ingest` accepts device tokens. **Device tokens are stored as SHA-256 hashes** (a DB leak can't forge uploads).
-- Android tracker **scaffold** in `mobile/android/`; iOS (HealthKit) **scaffold** in `mobile/ios/`.
-- **Supabase security verified (2026-06-24):** RLS is **ON for all 7 tables with deny-all** (anon/public key returns 0 rows — proven empirically); backend's `service_role` key bypasses RLS so the app works. The `device_tokens` table **has been applied to Supabase** (with RLS). The frontend does NOT use Supabase directly (auth is Clerk), so the anon key isn't even shipped to clients.
+**The product is complete and live** (frontend auto-deploys on push to `main`; backend deployed with `cd backend && vercel --prod`). Shipped + verified:
+- Pivot off the custom watch → multi-source platform (firmware archived in `watch-archive/`).
+- **Backend on Vercel, always-on** (moved off HF — free HF runs only one Space, used by the demo). Light `requirements.txt`; `/analyze` proxies/degrades to the demo Space.
+- **5 AI features:** `/analyze` (8-agent CrewAI, demo Space), **AI Coach** (`/coach`), **Readiness + Watchdog** (`/insights`, deterministic), **Chat** (`/chat`) — the latter three via `llm_lite.py` (multi-model failover, quota-aware) on the light backend.
+- **Security:** RLS deny-all on all tables (anon key returns 0 rows — verified); device tokens hashed; **per-user AI rate limit 200/day** (`ratelimit.py`); **`DELETE /user/data`** GDPR erase + `/privacy` page.
+- **13+ import sources** incl. universal `.fit/.tcx/.gpx`; Strava/Fitbit OAuth; manual + GPS.
+- Live Gradio agent demo (HF) embedded on the landing; `/demo` sample dashboard; `/app` PWA-install + Android download page; installable **PWA** (heartbeat icon); empty-state onboarding.
+- Phone pairing (`/device/*`, hashed tokens) live + verified end-to-end. Android + iOS apps **scaffolded** (`mobile/`).
+- **Stress-tested** every component alone and together (DB → summary → LLM → output).
 
-**Not done yet — full, ordered TODO lives in [`mobile/README.md`](mobile/README.md) + [`mobile/ios/README.md`](mobile/ios/README.md). The critical-path items:**
-1. **Backend go-live for pairing:** the `device_tokens` table is already applied; just **redeploy the backend HF Space** so `/device/*` + flexible auth + token-hashing are live. Smoke-test pair → ingest.
-2. **Web pairing UI:** add Settings → "Pair a device" (calls `POST /device/pair`, shows token + QR) and a paired-device list with revoke; add `pairDevice/listDevices/revokeDevice` to `frontend/src/lib/api.ts`.
-3. **Android app:** open `mobile/android/` in Android Studio, add launcher icons, build a debug APK, test on a phone; then add GPS routes + step-baseline persistence (details in `mobile/README.md`).
-3b. **iOS app:** open `mobile/ios/FitnessAI/` in Xcode (a Mac), add the HealthKit capability, build to an iPhone. iOS has **no free distribution to others** (personal-team signing = your own phone, 7-day expiry; TestFlight/App Store need the $99/yr program). Details in `mobile/ios/README.md`.
-4. **Publish APK:** drop the signed APK at `frontend/public/fitness-ai.apk`; keep `frontend/public/version.json` in sync (version + apkUrl). The repo is **private**, so the version manifest + APK are served by the **public Vercel site**, NOT GitHub raw/Releases (those 404 for anonymous users). `/app` reads `/version.json`; the Android app reads `https://fitness-ai-agents.vercel.app/version.json`.
-
-The web app is also an installable **PWA** (manifest + service worker), so iPhone/desktop users can "Add to Home Screen"; the `/app` page has an install spot per device (Android APK / iOS PWA + Apple Health / desktop PWA).
+**Remaining (config / hardware / optional — not blockers):**
+1. **OAuth redirect URIs** — register the exact callback in the Google + Strava consoles (`backend/DEPLOY-VERCEL.md` has them: `…/integrations/fitbit/callback` + Strava domain). Backend already builds them from `BACKEND_URL`. File imports need none of this.
+2. **Native apps** — build the Android APK (Android Studio → drop at `frontend/public/fitness-ai.apk`, set `version.json` `androidApp.available:true`) and the iOS app (Xcode, Mac). Both **hardware-blocked** for now; the PWA covers all platforms. `/app` shows the APK as "coming soon" until built.
+3. **Optional polish:** CI test suite, error monitoring (Sentry).
