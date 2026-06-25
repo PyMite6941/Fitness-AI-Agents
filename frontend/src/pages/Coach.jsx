@@ -19,6 +19,7 @@ export default function Coach() {
 	const [weeks, setWeeks] = useState(8);
 	const [busy, setBusy] = useState('');
 	const [error, setError] = useState('');
+	const [usage, setUsage] = useState(null);
 
 	useEffect(() => { load(); }, []);
 
@@ -44,14 +45,14 @@ export default function Coach() {
 		try {
 			const token = await getToken();
 			const p = await api.createPlan(token, goal.trim(), Number(weeks));
-			setPlan(p); setGoal('');
+			setPlan(p); setGoal(''); if (p.usage) setUsage(p.usage);
 		} catch (e) { setError(e.message || 'Could not generate a plan.'); }
 		finally { setBusy(''); }
 	}
 
 	async function adapt() {
 		setBusy('adapt'); setError('');
-		try { setPlan(await api.adaptPlan(await getToken())); }
+		try { const r = await api.adaptPlan(await getToken()); setPlan(r); if (r.usage) setUsage(r.usage); }
 		catch (e) { setError(e.message); }
 		finally { setBusy(''); }
 	}
@@ -79,6 +80,9 @@ export default function Coach() {
 			</header>
 
 			{error && <div className='coach-error'>{error}</div>}
+			{usage?.used != null && (
+				<div className='coach-usage'>AI usage today: {usage.used}/{usage.limit}</div>
+			)}
 
 			{/* Readiness + Alerts */}
 			<div className='coach-top'>

@@ -1,0 +1,26 @@
+# XcodeGen spec — lets CI (or you) generate FitnessAI.xcodeproj from these Swift
+# files without committing a binary .xcodeproj. Run `xcodegen generate` in this dir.
+name: FitnessAI
+options:
+  bundleIdPrefix: studio.tin
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  FitnessAI:
+    type: application
+    platform: iOS
+    sources:
+      - path: FitnessAI
+        excludes:
+          - "Info.plist"
+          - "FitnessAI.entitlements"
+          - "README.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: studio.tin.fitnessai
+        INFOPLIST_FILE: FitnessAI/Info.plist
+        CODE_SIGN_ENTITLEMENTS: FitnessAI/FitnessAI.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"

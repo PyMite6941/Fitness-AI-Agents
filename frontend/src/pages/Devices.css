@@ -1,0 +1,32 @@
+.dev-page { min-height: 100vh; background: #0a0a0a; color: #fff; max-width: 760px; margin: 0 auto; padding: 0 24px 80px; }
+.dev-nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid #1e1e1e; margin-bottom: 24px; }
+.dev-logo { font-weight: 700; }
+.dev-back { background: none; border: 0; color: rgba(255,255,255,0.6); cursor: pointer; font-size: 0.9rem; }
+.dev-back:hover { color: #ff3c00; }
+.dev-error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; padding: 10px 14px; border-radius: 9px; margin-bottom: 16px; }
+
+.dev-card { background: #141414; border: 1px solid #2a2a2a; border-radius: 14px; padding: 22px; margin-bottom: 18px; }
+.dev-card-title { font-size: 0.74rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.45); font-weight: 600; margin-bottom: 12px; }
+.dev-sub { color: rgba(255,255,255,0.6); font-size: 0.92rem; line-height: 1.55; margin-bottom: 16px; }
+.dev-muted { color: rgba(255,255,255,0.4); }
+.dev-btn { background: #ff3c00; color: #fff; border: 0; border-radius: 8px; padding: 12px 22px; font-weight: 700; cursor: pointer; }
+.dev-btn:disabled { opacity: 0.6; cursor: default; }
+
+.dev-code-box { margin-top: 18px; padding: 16px; background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 10px; }
+.dev-code-label { font-size: 0.82rem; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+.dev-code-row { display: flex; gap: 8px; align-items: center; }
+.dev-code-row code { flex: 1; font-family: monospace; color: #4ade80; font-size: 0.85rem; overflow-x: auto; white-space: nowrap; padding: 8px 10px; background: #000; border-radius: 6px; }
+.dev-code-row button { background: #ff3c00; color: #fff; border: 0; border-radius: 6px; padding: 9px 14px; font-weight: 600; cursor: pointer; }
+.dev-qr { display: block; width: 180px; height: 180px; margin: 16px 0 8px; border-radius: 10px; }
+.dev-warn { font-size: 0.8rem; color: #f59e0b; }
+
+.dev-list { list-style: none; margin: 0; padding: 0; }
+.dev-list li { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #222; gap: 12px; }
+.dev-list li.revoked { opacity: 0.45; }
+.dev-list strong { display: block; }
+.dev-list span { color: rgba(255,255,255,0.45); font-size: 0.82rem; }
+.dev-revoke { background: transparent; border: 1px solid #2a2a2a; color: rgba(255,255,255,0.7); border-radius: 7px; padding: 7px 14px; cursor: pointer; }
+.dev-revoke:hover { border-color: #ef4444; color: #ef4444; }
+.dev-revoked-tag { color: #ef4444; font-size: 0.78rem; }
+.dev-foot { color: rgba(255,255,255,0.4); font-size: 0.85rem; }
+.dev-foot a { color: #ff3c00; }

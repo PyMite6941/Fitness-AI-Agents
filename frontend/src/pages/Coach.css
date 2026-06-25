@@ -84,3 +84,5 @@
 .day-target { font-size: 0.72rem; color: #ff9a7a; }
 .day-status { font-size: 0.7rem; color: rgba(255,255,255,0.45); margin-top: auto; }
 .day-card.done .day-status { color: #22c55e; }
+
+.coach-usage { font-size: 0.78rem; color: rgba(255,255,255,0.4); font-family: monospace; margin-bottom: 12px; }

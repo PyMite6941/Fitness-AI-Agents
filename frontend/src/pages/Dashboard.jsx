@@ -121,6 +121,8 @@ export default function Dashboard() {
 	const [loading, setLoading] = useState(true);
 	const [seeding, setSeeding] = useState(false);
 	const [sources, setSources] = useState(null);
+	const [readiness, setReadiness] = useState(null);
+	const [alerts, setAlerts] = useState([]);
 	const [copied, setCopied]   = useState(false);
 
 	function exportAnalysis() {
@@ -152,18 +154,22 @@ export default function Dashboard() {
 		setLoading(true);
 		try {
 			const token = await getToken();
-			const [me, chartData, hist, sum, src] = await Promise.all([
+			const [me, chartData, hist, sum, src, rdy, alr] = await Promise.all([
 				api.getMe(token),
 				api.getCharts(token),
 				api.getHistory(token),
 				api.getSummary(token),
 				api.getSources(token).catch(() => null),
+				api.getReadiness(token).catch(() => null),
+				api.getAlerts(token).catch(() => null),
 			]);
 			setStats(me);
 			setCharts(chartData);
 			setHistory(hist.analyses);
 			setSummary(sum);
 			setSources(src);
+			setReadiness(rdy);
+			setAlerts(alr?.alerts || []);
 		} catch (e) {
 			setError(e.message);
 		} finally {
@@ -241,6 +247,9 @@ export default function Dashboard() {
 					<button className='sidebar-link' onClick={() => navigate('/routes')}>
 						<span className='nav-icon'>⊕</span>Routes
 					</button>
+					<button className='sidebar-link' onClick={() => navigate('/devices')}>
+						<span className='nav-icon'>📱</span>Devices
+					</button>
 					<button className='sidebar-link log-workout-btn' onClick={() => navigate('/log')}>
 						+ Log Workout
 					</button>
@@ -305,6 +314,25 @@ export default function Dashboard() {
 												<span className='welcome-tag' key={s}>{s}</span>
 											))}
 										</div>
+									</div>
+								)}
+
+								{/* Readiness + watchdog strip */}
+								{hasData && (readiness?.available || alerts.length > 0) && (
+									<div className='ready-strip' onClick={() => navigate('/coach')} title='Open AI Coach'>
+										{readiness?.available && (
+											<div className='ready-strip-score' data-band={readiness.band}>
+												<span className='rss-num'>{readiness.score}</span>
+												<span className='rss-lbl'>READINESS</span>
+											</div>
+										)}
+										<div className='ready-strip-body'>
+											<p className='rss-advice'>{readiness?.advice || 'Readiness needs a few more days of HR/HRV/sleep.'}</p>
+											{alerts.filter(a => a.level !== 'ok').slice(0, 2).map((a, i) => (
+												<p key={i} className={`rss-alert ${a.level}`}>⚠ {a.title}</p>
+											))}
+										</div>
+										<span className='rss-cta'>AI Coach →</span>
 									</div>
 								)}
 

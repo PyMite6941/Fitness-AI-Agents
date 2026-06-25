@@ -1,0 +1,40 @@
+name: Build Android APK
+
+# Free cloud build — no Android phone, no Mac, no local install needed.
+# Run it from the repo's Actions tab (Run workflow), or it runs on changes to
+# the app. Download the built APK from the run's "Artifacts" section.
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'mobile/android/**'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'   # required by Android Gradle Plugin 8.5
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-ai-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

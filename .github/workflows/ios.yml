@@ -1,0 +1,30 @@
+name: Build iOS (compile check)
+
+# Free cloud COMPILE for iOS — GitHub provides macOS runners at no cost (within the
+# free minutes). XcodeGen turns the Swift files into an Xcode project, then xcodebuild
+# compiles it for the simulator. NOTE: this proves it builds; it can't install on a
+# device (that needs an iPhone, and distribution needs Apple's $99/yr program).
+# Manual trigger only (Actions tab -> Run workflow), since the scaffold may need fixes.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: mobile/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Compile for simulator (no signing)
+        run: |
+          xcodebuild build \
+            -project FitnessAI.xcodeproj \
+            -scheme FitnessAI \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

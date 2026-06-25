@@ -141,7 +141,7 @@ export default function DownloadApp() {
 					code (no password on the device):
 				</p>
 				<ol className='dl-steps'>
-					<li>Web app → <strong>Settings → Pair a device</strong> → <strong>Generate code</strong> (a <code>fit_</code> code, also shown as a QR).</li>
+					<li>Web app → <strong>Devices</strong> (sidebar) → <strong>Generate pairing code</strong> (a <code>fit_</code> code, also shown as a QR).</li>
 					<li>Paste it into the phone app — stored in the device's secure storage (Android Keystore / iOS Keychain), and revocable anytime.</li>
 					<li>The phone tracks locally and uploads to your account when Wi-Fi or data returns. Analysis only runs on the web, when you ask — never on the phone.</li>
 				</ol>

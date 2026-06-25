@@ -102,6 +102,13 @@ export const api = {
 	chat: (token: string, messages: object[]) =>
 		request('/chat/', token, { method: 'POST', body: JSON.stringify({ messages }) }),
 
+	// Device pairing (phone tracker apps)
+	pairDevice: (token: string, deviceName?: string) =>
+		request('/device/pair', token, { method: 'POST', body: JSON.stringify({ device_name: deviceName }) }),
+	listDevices: (token: string) => request('/device/list', token),
+	revokeDevice: (token: string, id: number) =>
+		request('/device/revoke', token, { method: 'POST', body: JSON.stringify({ id }) }),
+
 	deleteMyData: (token: string) =>
 		request('/user/data', token, { method: 'DELETE' }),
 

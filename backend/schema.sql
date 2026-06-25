@@ -163,3 +163,35 @@ CREATE TABLE coach_plans (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_coach_plans_user ON coach_plans (user_id, status);
+
+-- ── Security: enable Row Level Security on every table ───────────────────────
+-- With RLS ON and NO policies, the anon/public key is denied all access; the
+-- backend uses the service_role key, which bypasses RLS. (Applied live; here for
+-- reproducibility on a fresh database.)
+ALTER TABLE watch_data         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE analyses           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routes             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_integrations  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE device_tokens      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE coach_plans        ENABLE ROW LEVEL SECURITY;
+
+-- ── Per-user AI rate limiting ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ai_usage (
+    user_id TEXT NOT NULL,
+    day     DATE NOT NULL DEFAULT current_date,
+    action  TEXT NOT NULL,
+    count   INT  NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, action)
+);
+ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION bump_ai_usage(p_user text, p_action text, p_limit int)
+RETURNS TABLE(allowed boolean, used int, lim int) LANGUAGE plpgsql AS $$
+DECLARE cur_count int;
+BEGIN
+  INSERT INTO ai_usage(user_id, day, action, count) VALUES (p_user, current_date, p_action, 0)
+    ON CONFLICT (user_id, day, action) DO NOTHING;
+  SELECT count INTO cur_count FROM ai_usage WHERE user_id=p_user AND day=current_date AND action=p_action FOR UPDATE;
+  IF cur_count >= p_limit THEN RETURN QUERY SELECT false, cur_count, p_limit; RETURN; END IF;
+  UPDATE ai_usage SET count = count + 1 WHERE user_id=p_user AND day=current_date AND action=p_action RETURNING count INTO cur_count;
+  RETURN QUERY SELECT true, cur_count, p_limit;
+END $$;
