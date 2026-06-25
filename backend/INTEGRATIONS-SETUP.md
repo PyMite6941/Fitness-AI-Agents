@@ -6,12 +6,12 @@ registered on their side, and (2) its client id/secret added as env vars on the
 
 Backend base URL: `https://backend-seven-topaz-23.vercel.app`
 
-| Provider | Register an app at | Redirect / Callback URL to enter | Scopes | Env vars to set |
-|---|---|---|---|---|
-| **Oura** | https://cloud.ouraring.com/oauth/applications | `https://backend-seven-topaz-23.vercel.app/integrations/oura/callback` | daily, heartrate, workout, personal, session | `OURA_CLIENT_ID`, `OURA_CLIENT_SECRET` |
-| **WHOOP** | https://developer.whoop.com (Dashboard → Create app) | `https://backend-seven-topaz-23.vercel.app/integrations/whoop/callback` | read:recovery, read:sleep, read:workout, read:cycles, offline | `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET` |
-| Strava (already wired) | https://www.strava.com/settings/api | `.../integrations/strava/callback` | activity:read_all | `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET` |
-| Fitbit/Google Health (already wired) | https://console.cloud.google.com | `.../integrations/fitbit/callback` | (Google Health) | `GOOGLE_HEALTH_CLIENT_ID`, `GOOGLE_HEALTH_CLIENT_SECRET` |
+| Provider | 1. Create account / dev portal | 2. Register an app at | Redirect / Callback URL to enter | Scopes | Env vars to set |
+|---|---|---|---|---|---|
+| **Oura** | https://cloud.ouraring.com (sign up / log in with an Oura account) | https://cloud.ouraring.com/oauth/applications | `https://backend-seven-topaz-23.vercel.app/integrations/oura/callback` | daily, heartrate, workout, personal, session | `OURA_CLIENT_ID`, `OURA_CLIENT_SECRET` |
+| **WHOOP** | https://developer.whoop.com (Get started → create a developer account) | https://developer-dashboard.whoop.com (Create app) | `https://backend-seven-topaz-23.vercel.app/integrations/whoop/callback` | read:recovery, read:sleep, read:workout, read:cycles, offline | `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET` |
+| Strava | https://www.strava.com/register | https://www.strava.com/settings/api | `.../integrations/strava/callback` | activity:read_all | `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET` |
+| Fitbit/Google Health | https://accounts.google.com/signup | https://console.cloud.google.com (enable Health API → Credentials → OAuth client) | `.../integrations/fitbit/callback` | (Google Health) | `GOOGLE_HEALTH_CLIENT_ID`, `GOOGLE_HEALTH_CLIENT_SECRET` |
 
 ## Step by step (Oura example — WHOOP is identical)
 1. Go to the **register** URL above, create an application.
