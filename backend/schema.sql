@@ -149,3 +149,17 @@ CREATE TABLE device_tokens (
 );
 CREATE INDEX idx_device_tokens_user ON device_tokens (user_id);
 CREATE INDEX idx_device_tokens_hash ON device_tokens (token_hash) WHERE revoked = false;
+
+-- ── AI Coach plans (goal-based adaptive training plans) ──────────────────────
+CREATE TABLE coach_plans (
+    id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id     TEXT        NOT NULL,
+    goal        TEXT        NOT NULL,
+    weeks       INTEGER     NOT NULL,
+    start_date  DATE        NOT NULL,
+    plan        JSONB       NOT NULL,
+    status      TEXT        NOT NULL DEFAULT 'active',  -- active | archived | abandoned | completed
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_coach_plans_user ON coach_plans (user_id, status);

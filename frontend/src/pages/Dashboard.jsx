@@ -232,6 +232,12 @@ export default function Dashboard() {
 						</button>
 					))}
 					<div className='sidebar-divider' />
+					<button className='sidebar-link' onClick={() => navigate('/coach')}>
+						<span className='nav-icon'>✦</span>AI Coach
+					</button>
+					<button className='sidebar-link' onClick={() => navigate('/chat')}>
+						<span className='nav-icon'>💬</span>Chat
+					</button>
 					<button className='sidebar-link' onClick={() => navigate('/routes')}>
 						<span className='nav-icon'>⊕</span>Routes
 					</button>

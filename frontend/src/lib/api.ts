@@ -87,6 +87,21 @@ export const api = {
 	fileImport: (token: string, file: File, source: string) =>
 		_fileUpload(token, '/integrations/file/import', file, { source }),
 
+	// AI Coach
+	getPlan: (token: string) => request('/coach/plan', token),
+	createPlan: (token: string, goal: string, weeks: number) =>
+		request('/coach/plan', token, { method: 'POST', body: JSON.stringify({ goal, weeks }) }),
+	adaptPlan: (token: string) => request('/coach/adapt', token, { method: 'POST' }),
+	endPlan: (token: string) => request('/coach/plan', token, { method: 'DELETE' }),
+
+	// Insights (deterministic)
+	getReadiness: (token: string) => request('/insights/readiness', token),
+	getAlerts: (token: string) => request('/insights/alerts', token),
+
+	// Chat with your data
+	chat: (token: string, messages: object[]) =>
+		request('/chat/', token, { method: 'POST', body: JSON.stringify({ messages }) }),
+
 	demoSeed: (token: string) =>
 		request('/demo/seed', token, { method: 'POST' }),
 
