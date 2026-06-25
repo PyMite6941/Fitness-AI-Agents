@@ -865,7 +865,11 @@ def _parse_gpx(content: bytes, user_id: str, source: str = "garmin") -> tuple[li
                     coord["altitude"] = float(ele_el.text)
                 except (ValueError, TypeError):
                     pass
-            hr_el = pt.find(".//hr") or pt.find(".//HeartRateBpm/Value")
+            # NB: a childless ElementTree element is FALSY, so `a or b` would drop a
+            # valid <hr> here — use explicit None checks.
+            hr_el = pt.find(".//hr")
+            if hr_el is None:
+                hr_el = pt.find(".//HeartRateBpm/Value")
             if hr_el is not None and hr_el.text:
                 try:
                     v = int(hr_el.text)
@@ -951,7 +955,7 @@ def _parse_tcx(content: bytes, user_id: str, source: str = "garmin") -> tuple[li
             for tp in lap.findall(".//Trackpoint"):
                 time_el = tp.find("Time")
                 pos_el  = tp.find("Position")
-                hr_el   = tp.find(".//HeartRateBpm/Value") or tp.find("HeartRateBpm/Value")
+                hr_el   = tp.find(".//HeartRateBpm/Value")  # childless element is falsy — no `or`
                 if pos_el is not None and time_el is not None:
                     lat_el = pos_el.find("LatitudeDegrees")
                     lng_el = pos_el.find("LongitudeDegrees")
