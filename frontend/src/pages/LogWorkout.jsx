@@ -32,8 +32,6 @@ const STAT_FIELDS = [
 const APPS = [
 	{ id: 'strava',        name: 'Strava',         desc: 'Sync runs, rides, and GPS routes automatically.',                                                                   color: '#FC4C02', status: 'available' },
 	{ id: 'fitbit',        name: 'Fitbit',          desc: 'Connect your Fitbit account to sync workouts and sleep automatically.',                                             color: '#00B0B9', status: 'oauth'     },
-	{ id: 'oura',          name: 'Oura Ring',       desc: 'Connect Oura to sync sleep, HRV, and workouts automatically.',                                                       color: '#7B6CF6', status: 'oauth'     },
-	{ id: 'whoop',         name: 'WHOOP',           desc: 'Connect WHOOP to sync recovery, HRV, sleep, and strain automatically.',                                             color: '#00E0A1', status: 'oauth'     },
 	{ id: 'nike_run_club', name: 'Nike Run Club',   desc: 'Import your NRC data export (ZIP or JSON) — includes dates, GPS, HR, and distance.',                               color: '#111',    status: 'import'   },
 	{ id: 'garmin',        name: 'Garmin Connect',  desc: 'Export any activity from Garmin Connect as .gpx or .tcx and upload it here.',                                      color: '#007CC3', status: 'import'   },
 	{ id: 'apple_health',  name: 'Apple Health',    desc: 'Export from Health app → Profile → Export All Health Data. Upload the ZIP or export.xml.',                         color: '#fff',    status: 'import'   },
@@ -232,28 +230,6 @@ export default function LogWorkout() {
 			const { url } = await api.fitbitConnectUrl(token);
 			window.location.href = url;
 		} catch (e) { setError(e.message); }
-	}
-
-	// Generic OAuth connect/sync (Oura, Whoop) — same flow, different endpoints.
-	async function connectOAuth(connectFn) {
-		try {
-			const token = await getToken();
-			const { url } = await connectFn(token);
-			window.location.href = url;
-		} catch (e) { setError(e.message); }
-	}
-
-	async function syncOAuth(provider, label, syncFn) {
-		setSyncing(provider);
-		setFileResult(null);
-		setError('');
-		try {
-			const token = await getToken();
-			const res = await syncFn(token);
-			if (res.error) { setError(`${label}: ${res.error}`); return; }
-			setSuccess(`Synced ${res.synced} workout${res.synced !== 1 ? 's' : ''} and ${res.sleep_synced} reading${res.sleep_synced !== 1 ? 's' : ''} from ${label}.`);
-		} catch (e) { setError(e.message); }
-		finally { setSyncing(null); }
 	}
 
 	async function syncFitbit() {
@@ -547,23 +523,15 @@ export default function LogWorkout() {
 										</div>
 									)}
 
-									{/* OAuth platforms (Fitbit, Oura, Whoop) — connect + sync */}
-									{app.status === 'oauth' && (() => {
-										const oauthCfg = {
-											fitbit: { connect: connectFitbit, sync: syncFitbit },
-											oura:   { connect: () => connectOAuth(api.ouraConnectUrl),  sync: () => syncOAuth('oura', 'Oura', api.ouraSync) },
-											whoop:  { connect: () => connectOAuth(api.whoopConnectUrl), sync: () => syncOAuth('whoop', 'WHOOP', api.whoopSync) },
-										}[app.id];
-										if (!oauthCfg) return null;
-										return (
-											<div className='app-actions'>
-												{isConnected
-													? <button className='app-btn sync' onClick={oauthCfg.sync} disabled={busy}>{busy ? 'Syncing…' : 'Sync Now'}</button>
-													: <button className='app-btn connect' onClick={oauthCfg.connect}>Connect {app.name}</button>
-												}
-											</div>
-										);
-									})()}
+									{/* Fitbit — OAuth + sync */}
+									{app.status === 'oauth' && (
+										<div className='app-actions'>
+											{isConnected
+												? <button className='app-btn sync' onClick={syncFitbit} disabled={busy}>{busy ? 'Syncing…' : 'Sync Now'}</button>
+												: <button className='app-btn connect' onClick={connectFitbit}>Connect Fitbit</button>
+											}
+										</div>
+									)}
 
 									{/* File-import platforms (app-specific exports) */}
 									{app.status === 'import' && (() => {

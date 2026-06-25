@@ -78,15 +78,6 @@ export const api = {
 	fitbitSync: (token: string) =>
 		request('/integrations/fitbit/sync', token, { method: 'POST' }),
 
-	ouraConnectUrl: (token: string) =>
-		request('/integrations/oura/connect', token),
-	ouraSync: (token: string) =>
-		request('/integrations/oura/sync', token, { method: 'POST' }),
-	whoopConnectUrl: (token: string) =>
-		request('/integrations/whoop/connect', token),
-	whoopSync: (token: string) =>
-		request('/integrations/whoop/sync', token, { method: 'POST' }),
-
 	nikeImport:    (token: string, file: File) => _fileUpload(token, '/integrations/nike/import',    file),
 	garminImport:  (token: string, file: File) => _fileUpload(token, '/integrations/garmin/import',  file),
 	appleImport:   (token: string, file: File) => _fileUpload(token, '/integrations/apple/import',   file),
