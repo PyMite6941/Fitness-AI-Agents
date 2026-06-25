@@ -2,7 +2,7 @@
   "androidApp": {
     "version": "0.1.0",
     "versionCode": 1,
-    "available": false,
+    "available": true,
     "releaseTag": "mobile-v0.1.0",
     "apkUrl": "https://fitness-ai-agents.vercel.app/fitness-ai.apk",
     "minAndroid": 26,
