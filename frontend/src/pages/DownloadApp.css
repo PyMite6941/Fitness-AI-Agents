@@ -97,3 +97,22 @@ details.dl-card[open] summary { margin-bottom: 12px; }
 	opacity: 1;
 }
 .dl-mono { font-family: monospace; }
+
+/* PWA install state + "coming soon" */
+.dl-soon {
+	margin-top: 16px;
+	padding: 12px 14px;
+	border: 1px dashed #3a3a3a;
+	border-radius: 9px;
+	color: rgba(255, 255, 255, 0.55);
+	font-size: 0.88rem;
+	line-height: 1.5;
+}
+.dl-soon strong { color: rgba(255, 255, 255, 0.8); }
+.dl-installed { display: inline-block; color: #22c55e; font-weight: 600; padding: 6px 0; }
+.dl-soon-badge {
+	font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase;
+	background: rgba(255, 255, 255, 0.06); border: 1px solid #2a2a2a;
+	color: rgba(255, 255, 255, 0.5); padding: 3px 8px; border-radius: 20px;
+	margin-left: 8px; vertical-align: middle; font-weight: 600;
+}
