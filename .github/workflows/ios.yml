@@ -27,4 +27,20 @@ jobs:
             -project FitnessAI.xcodeproj \
             -scheme FitnessAI \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Zip the built .app (simulator build — NOT installable on a device)
+        if: success()
+        run: |
+          APP=$(find build/Build/Products -name 'FitnessAI.app' -type d | head -1)
+          echo "Built: $APP"
+          ditto -c -k --keepParent "$APP" FitnessAI-simulator.zip
+
+      - name: Upload simulator build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-ai-ios-simulator
+          path: mobile/ios/FitnessAI-simulator.zip
+          if-no-files-found: warn
