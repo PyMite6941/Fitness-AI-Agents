@@ -11,6 +11,9 @@ on:
       - 'mobile/android/**'
       - '.github/workflows/android.yml'
 
+permissions:
+  contents: write          # lets the job commit the published APK back to the repo
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,9 +38,26 @@ jobs:
         working-directory: mobile/android
         run: gradle assembleDebug --no-daemon --stacktrace --info
 
-      - name: Upload APK
+      - name: Upload APK (downloadable artifact)
         uses: actions/upload-artifact@v4
         with:
           name: fitness-ai-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish APK to the website (/app download)
+        if: success()
+        run: |
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk frontend/public/fitness-ai.apk
+          python3 - <<'PY'
+          import json
+          p = "frontend/public/version.json"
+          d = json.load(open(p))
+          d["androidApp"]["available"] = True
+          json.dump(d, open(p, "w"), indent=2)
+          PY
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/fitness-ai.apk frontend/public/version.json
+          git commit -m "ci: publish built APK to /app [skip ci]" || echo "nothing to publish"
+          git push
