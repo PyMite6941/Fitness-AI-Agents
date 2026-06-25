@@ -83,6 +83,10 @@ export const api = {
 	appleImport:   (token: string, file: File) => _fileUpload(token, '/integrations/apple/import',   file),
 	googleFitImport: (token: string, file: File) => _fileUpload(token, '/integrations/google/import', file),
 
+	// Universal .fit/.tcx/.gpx import — `source` tags the data (coros, wahoo, polar, …).
+	fileImport: (token: string, file: File, source: string) =>
+		_fileUpload(token, '/integrations/file/import', file, { source }),
+
 	demoSeed: (token: string) =>
 		request('/demo/seed', token, { method: 'POST' }),
 
@@ -90,9 +94,10 @@ export const api = {
 		request('/demo/reset', token, { method: 'POST' }),
 };
 
-function _fileUpload(token: string, path: string, file: File) {
+function _fileUpload(token: string, path: string, file: File, extra?: Record<string, string>) {
 	const form = new FormData();
 	form.append('file', file);
+	if (extra) for (const [k, v] of Object.entries(extra)) form.append(k, v);
 	return fetch(`${API_URL}${path}`, {
 		method: 'POST',
 		headers: { Authorization: `Bearer ${token}` },

@@ -7,7 +7,7 @@ const features = [
 	{
 		icon: '📱',
 		title: 'Import From Any Source',
-		desc: 'Strava, Fitbit, Garmin, Apple Health, Nike Run Club, Google Fit — bring your data from anywhere.',
+		desc: 'Strava, Fitbit, Garmin, Apple Health, Nike Run Club, Google Fit, COROS, Suunto, Wahoo, Polar, Zwift, Peloton — or any .fit/.tcx/.gpx file.',
 	},
 	{
 		icon: '🔄',
@@ -97,9 +97,9 @@ export default function FitnessAI() {
 
 			{/* STATS BAR */}
 			<div className='stats-bar'>
-				<div className='stat'><strong>6</strong><span>Platform Integrations</span></div>
+				<div className='stat'><strong>13+</strong><span>Platform Integrations</span></div>
 				<div className='stat-divider' />
-				<div className='stat'><strong>2</strong><span>OAuth + File Import</span></div>
+				<div className='stat'><strong>.fit/.tcx/.gpx</strong><span>Universal Import</span></div>
 				<div className='stat-divider' />
 				<div className='stat'><strong>&lt;30s</strong><span>Analysis Time</span></div>
 				<div className='stat-divider' />

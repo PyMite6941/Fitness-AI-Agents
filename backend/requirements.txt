@@ -9,3 +9,4 @@ python-multipart==0.0.20
 httpx==0.28.1
 PyJWT==2.12.1
 supabase==2.30.1
+fitdecode==0.10.0   # parse .fit files (Garmin/Wahoo/Coros/Suunto/Zwift) — pure-python, light

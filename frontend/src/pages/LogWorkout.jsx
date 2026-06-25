@@ -36,6 +36,15 @@ const APPS = [
 	{ id: 'garmin',        name: 'Garmin Connect',  desc: 'Export any activity from Garmin Connect as .gpx or .tcx and upload it here.',                                      color: '#007CC3', status: 'import'   },
 	{ id: 'apple_health',  name: 'Apple Health',    desc: 'Export from Health app → Profile → Export All Health Data. Upload the ZIP or export.xml.',                         color: '#fff',    status: 'import'   },
 	{ id: 'google_fit',    name: 'Google Fit',      desc: 'Export via takeout.google.com (select Fit only). Upload the downloaded ZIP.',                                      color: '#4285F4', status: 'import'   },
+	// Universal file import — any app/device that exports .fit / .tcx / .gpx.
+	{ id: 'coros',         name: 'COROS',           desc: 'COROS app → activity → Export as .FIT or .GPX, then upload here.',                                                  color: '#FF4F00', status: 'file'     },
+	{ id: 'suunto',        name: 'Suunto',          desc: 'Suunto app → workout → Export (.FIT/.GPX/.TCX) and upload here.',                                                    color: '#0a0a0a', status: 'file'     },
+	{ id: 'wahoo',         name: 'Wahoo',           desc: 'Wahoo / ELEMNT → export a ride as .FIT or .TCX and upload here.',                                                    color: '#1BA0E2', status: 'file'     },
+	{ id: 'polar',         name: 'Polar Flow',      desc: 'Polar Flow → activity → Export session (.TCX/.GPX) and upload here.',                                                color: '#D6001C', status: 'file'     },
+	{ id: 'zwift',         name: 'Zwift',           desc: 'Zwift saves a .FIT for every ride (Documents/Zwift/Activities). Upload it here.',                                    color: '#FC6719', status: 'file'     },
+	{ id: 'peloton',       name: 'Peloton',         desc: 'Peloton workout → download .TCX and upload here for HR + output.',                                                   color: '#181A1D', status: 'file'     },
+	{ id: 'mapmyrun',      name: 'MapMyRun',        desc: 'MapMyRun / MapMyFitness → workout → Export (.TCX/.GPX) and upload here.',                                            color: '#E01D2C', status: 'file'     },
+	{ id: 'other',         name: 'Other (.fit/.tcx/.gpx)', desc: 'Any other app or device — upload a standard .fit, .tcx, or .gpx file.',                                          color: '#888',    status: 'file'     },
 ];
 
 function localNow() {
@@ -99,6 +108,7 @@ export default function LogWorkout() {
 	const [garminResult,  setGarminResult]  = useState(null);
 	const [appleResult,   setAppleResult]   = useState(null);
 	const [googleResult,  setGoogleResult]  = useState(null);
+	const [fileResult,    setFileResult]    = useState(null);
 
 	// Route state
 	const [routeMode, setRouteMode] = useState('none');  // 'none' | 'draw' | 'gpx'
@@ -283,6 +293,22 @@ export default function LogWorkout() {
 		finally { setSyncing(null); e.target.value = ''; }
 	}
 
+	async function handleFileImport(e, source, sourceName) {
+		const file = e.target.files[0];
+		if (!file) return;
+		setSyncing(source);
+		setFileResult(null);
+		setError('');
+		try {
+			const token = await getToken();
+			const res = await api.fileImport(token, file, source);
+			if (res.error) { setError(`${sourceName} import error: ${res.error}`); return; }
+			setFileResult({ source, ...res });
+			setSuccess(`Imported ${res.imported} workout${res.imported !== 1 ? 's' : ''} and ${res.routes_saved} route${res.routes_saved !== 1 ? 's' : ''} from ${sourceName}.`);
+		} catch (e) { setError(e.message); }
+		finally { setSyncing(null); e.target.value = ''; }
+	}
+
 	async function handleNikeImport(e) {
 		const file = e.target.files[0];
 		if (!file) return;
@@ -463,6 +489,7 @@ export default function LogWorkout() {
 								garmin:        garminResult ? `Last import: ${garminResult.imported} workouts, ${garminResult.routes_saved} routes` : null,
 								apple_health:  appleResult  ? `Last import: ${appleResult.imported} workouts, ${appleResult.readings_synced} readings` : null,
 								google_fit:    googleResult ? `Last import: ${googleResult.imported} workouts, ${googleResult.readings_synced} readings` : null,
+								[fileResult?.source]: fileResult ? `Last import: ${fileResult.imported} workouts, ${fileResult.routes_saved} routes` : null,
 							};
 
 							// Per-app file accept & handler
@@ -506,7 +533,7 @@ export default function LogWorkout() {
 										</div>
 									)}
 
-									{/* File-import platforms */}
+									{/* File-import platforms (app-specific exports) */}
 									{app.status === 'import' && (() => {
 										const cfg = importConfig[app.id];
 										if (!cfg) return null;
@@ -520,6 +547,17 @@ export default function LogWorkout() {
 											</div>
 										);
 									})()}
+
+									{/* Universal file import (.fit/.tcx/.gpx) — any device/app */}
+									{app.status === 'file' && (
+										<div className='app-actions'>
+											<label className={`app-btn sync${busy ? ' disabled' : ''}`} style={{ cursor: busy ? 'not-allowed' : 'pointer' }}>
+												{busy ? 'Importing…' : 'Upload File'}
+												<input type='file' accept='.fit,.tcx,.gpx' style={{ display: 'none' }}
+													disabled={busy} onChange={(e) => handleFileImport(e, app.id, app.name)} />
+											</label>
+										</div>
+									)}
 								</div>
 							);
 						})}

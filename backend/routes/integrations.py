@@ -6,12 +6,13 @@ import io
 import json
 import math
 import os
+import re
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zipfile
 
 import httpx
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import RedirectResponse
 from auth import get_user_id
 from db import get_db
@@ -730,7 +731,113 @@ async def garmin_import(file: UploadFile = File(...), user_id: str = Depends(get
     return {"imported": len(workout_rows), "routes_saved": len(route_rows)}
 
 
-def _parse_gpx(content: bytes, user_id: str) -> tuple[list, list]:
+def _safe_source(source: str) -> str:
+    """Normalize a source label to a safe device tag (e.g. 'Nike Run Club' -> 'nike_run_club')."""
+    s = re.sub(r"[^a-z0-9]+", "_", (source or "").strip().lower()).strip("_")
+    return (s or "manual")[:32]
+
+
+@router.post("/file/import")
+async def file_import(
+    file: UploadFile = File(...),
+    source: str = Form("manual"),
+    user_id: str = Depends(get_user_id),
+):
+    """Universal importer for any app/device that exports a standard file:
+    .gpx / .tcx (Polar, MapMyRun, Wahoo, Peloton, Suunto, Coros, Garmin…) or
+    .fit (the universal binary format used by Garmin, Wahoo, Coros, Suunto, Zwift…).
+    The data is attributed to `source` so multi-source analysis stays accurate.
+    """
+    content = await file.read()
+    fn = (file.filename or "").lower()
+    src = _safe_source(source)
+    if fn.endswith(".gpx"):
+        workout_rows, route_rows = _parse_gpx(content, user_id, src)
+    elif fn.endswith(".tcx"):
+        workout_rows, route_rows = _parse_tcx(content, user_id, src)
+    elif fn.endswith(".fit"):
+        workout_rows, route_rows = _parse_fit(content, user_id, src)
+    else:
+        return {"error": "Upload a .gpx, .tcx, or .fit file.", "imported": 0, "routes_saved": 0}
+
+    db = await get_db()
+    if workout_rows:
+        await db.table("watch_data").insert(workout_rows).execute()
+    if route_rows:
+        await db.table("routes").insert(route_rows).execute()
+    return {"imported": len(workout_rows), "routes_saved": len(route_rows)}
+
+
+def _parse_fit(content: bytes, user_id: str, source: str = "manual") -> tuple[list, list]:
+    """Parse a .fit binary into (workout_rows, route_rows). Best-effort; needs `fitdecode`."""
+    try:
+        import fitdecode  # lazy: keeps the dep optional and the app light
+    except ImportError:
+        return [], []
+
+    SEMI = 180.0 / 2**31  # semicircles -> degrees
+    coords, hr_vals = [], []
+    sport = None
+    try:
+        with fitdecode.FitReader(io.BytesIO(content)) as fit:
+            for frame in fit:
+                if getattr(frame, "frame_type", None) != fitdecode.FIT_FRAME_DATA:
+                    continue
+                if frame.name == "sport":
+                    sport = frame.get_value("sport", fallback=None)
+                elif frame.name == "session" and sport is None:
+                    sport = frame.get_value("sport", fallback=None)
+                elif frame.name == "record":
+                    lat = frame.get_value("position_lat", fallback=None)
+                    lng = frame.get_value("position_long", fallback=None)
+                    ts  = frame.get_value("timestamp", fallback=None)
+                    if lat is None or lng is None or ts is None:
+                        continue
+                    c: dict = {"lat": lat * SEMI, "lng": lng * SEMI,
+                               "timestamp": ts.isoformat() if hasattr(ts, "isoformat") else str(ts)}
+                    alt = frame.get_value("altitude", fallback=None) or frame.get_value("enhanced_altitude", fallback=None)
+                    if alt is not None:
+                        c["altitude"] = float(alt)
+                    hr = frame.get_value("heart_rate", fallback=None)
+                    if hr is not None:
+                        try:
+                            hr = int(hr); hr_vals.append(hr); c["heart_rate"] = hr
+                        except (ValueError, TypeError):
+                            pass
+                    coords.append(c)
+    except Exception:
+        return [], []
+
+    if len(coords) < 2:
+        return [], []
+    try:
+        start_dt = datetime.fromisoformat(coords[0]["timestamp"].replace("Z", "+00:00"))
+        end_dt   = datetime.fromisoformat(coords[-1]["timestamp"].replace("Z", "+00:00"))
+    except (ValueError, KeyError):
+        return [], []
+
+    duration_s = int((end_dt - start_dt).total_seconds())
+    dist_m = sum(_haversine(coords[i-1]["lat"], coords[i-1]["lng"], coords[i]["lat"], coords[i]["lng"])
+                 for i in range(1, len(coords)))
+    workout_type = _classify_activity(str(sport or "workout"))
+
+    workout_rows = [{
+        "user_id": user_id, "type": "workout", "device": source,
+        "timestamp": start_dt.isoformat(), "workout_type": workout_type,
+        "duration_minutes": round(duration_s / 60, 1), "distance_meters": round(dist_m, 1),
+        "avg_heart_rate": round(sum(hr_vals) / len(hr_vals)) if hr_vals else None,
+        "max_heart_rate": max(hr_vals) if hr_vals else None,
+        "ending_heart_rate": hr_vals[-1] if hr_vals else None,
+    }]
+    route_rows = [{
+        "user_id": user_id, "workout_type": workout_type, "coordinates": coords,
+        "distance_meters": round(dist_m, 1), "duration_seconds": duration_s,
+        "started_at": start_dt.isoformat(), "ended_at": end_dt.isoformat(),
+    }]
+    return workout_rows, route_rows
+
+
+def _parse_gpx(content: bytes, user_id: str, source: str = "garmin") -> tuple[list, list]:
     try:
         root = _strip_ns(ET.fromstring(content))
     except ET.ParseError:
@@ -783,7 +890,7 @@ def _parse_gpx(content: bytes, user_id: str) -> tuple[list, list]:
                          for i in range(1, len(coords)))
 
         workout_rows.append({
-            "user_id":            user_id, "type": "workout", "device": "garmin",
+            "user_id":            user_id, "type": "workout", "device": source,
             "timestamp":          start_dt.isoformat(),
             "workout_type":       workout_type,
             "duration_minutes":   round(duration_s / 60, 1),
@@ -804,7 +911,7 @@ def _parse_gpx(content: bytes, user_id: str) -> tuple[list, list]:
     return workout_rows, route_rows
 
 
-def _parse_tcx(content: bytes, user_id: str) -> tuple[list, list]:
+def _parse_tcx(content: bytes, user_id: str, source: str = "garmin") -> tuple[list, list]:
     try:
         root = _strip_ns(ET.fromstring(content))
     except ET.ParseError:
@@ -865,7 +972,7 @@ def _parse_tcx(content: bytes, user_id: str) -> tuple[list, list]:
 
         end_dt = start_dt + timedelta(seconds=total_time_s)
         workout_rows.append({
-            "user_id":            user_id, "type": "workout", "device": "garmin",
+            "user_id":            user_id, "type": "workout", "device": source,
             "timestamp":          start_dt.isoformat(),
             "workout_type":       workout_type,
             "duration_minutes":   round(total_time_s / 60, 1),
