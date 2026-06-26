@@ -17,11 +17,11 @@
   "iosApp": {
     "version": "0.1.0",
     "versionCode": 1,
-    "available": false,
+    "available": true,
     "minIOS": 16,
     "ipaUrl": "https://fitness-ai-agents.vercel.app/fitness-ai.ipa",
     "install": "sideload",
-    "notes": "Unsigned .ipa — sideload free with AltStore/Sideloadly using your own Apple ID. Full Apple Health access needs a paid Apple Developer account."
+    "notes": "Unsigned .ipa \u2014 sideload free with AltStore/Sideloadly using your own Apple ID. Full Apple Health access needs a paid Apple Developer account."
   },
   "backendMin": "1.0.0",
   "updatedAt": "2026-06-24"
