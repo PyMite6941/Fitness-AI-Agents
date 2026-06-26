@@ -35,6 +35,8 @@ export default function DownloadApp() {
 
 	const app = meta?.androidApp;
 	const apkReady = app?.available === true;            // the native .apk binary exists
+	const ios = meta?.iosApp;
+	const ipaReady = ios?.available === true;            // the unsigned .ipa exists
 	const cls = (id) => `dl-card dl-device${os === id ? ' dl-detected' : ''}`;
 
 	async function installPWA() {
@@ -110,6 +112,20 @@ export default function DownloadApp() {
 					<li>Open the new <strong>FitnessAI</strong> icon and sign in.</li>
 					<li>For Apple Watch / iPhone data: Apple's <strong>Health</strong> app → your <strong>profile photo</strong> → <strong>Export All Health Data</strong> → upload the <code>export.zip</code> on the dashboard.</li>
 				</ol>
+
+				{ipaReady ? (
+					<div className='dl-ipa'>
+						<p className='dl-ipa-title'>Or install the native app (.ipa) — free sideload</p>
+						<a className='dl-btn' href={ios.ipaUrl} target='_blank' rel='noreferrer'>⬇ Download .ipa{ios.version ? ` (v${ios.version})` : ''}</a>
+						<ol className='dl-steps dl-steps-tight'>
+							<li>Install a free sideloader once: <strong>AltStore</strong> / <strong>SideStore</strong> (altstore.io) or <strong>Sideloadly</strong>.</li>
+							<li>Open the downloaded <code>fitness-ai.ipa</code> in it and sign in with your <strong>own free Apple ID</strong> — it re-signs the app onto your phone (renew every 7 days).</li>
+						</ol>
+						<p className='dl-soon'>Note: full <strong>Apple Health</strong> access needs a paid Apple Developer account; on a free Apple ID the app installs and pairs, but Health import may be limited. The PWA above has no such limit.</p>
+					</div>
+				) : (
+					<p className='dl-soon'>🔧 A sideloadable <strong>.ipa</strong> is on the way (built free in CI). For now the Home-Screen PWA above gives you the full app.</p>
+				)}
 			</div>
 
 			{/* ─── DESKTOP ─────────────────────────────────────────────── */}

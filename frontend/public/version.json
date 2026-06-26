@@ -17,9 +17,11 @@
   "iosApp": {
     "version": "0.1.0",
     "versionCode": 1,
+    "available": false,
     "minIOS": 16,
-    "install": "sideload-or-testflight",
-    "notes": "Reads Apple Health (iPhone + Apple Watch) and syncs to your account. Build/sign in Xcode; iOS has no app-store-free install for others."
+    "ipaUrl": "https://fitness-ai-agents.vercel.app/fitness-ai.ipa",
+    "install": "sideload",
+    "notes": "Unsigned .ipa — sideload free with AltStore/Sideloadly using your own Apple ID. Full Apple Health access needs a paid Apple Developer account."
   },
   "backendMin": "1.0.0",
   "updatedAt": "2026-06-24"

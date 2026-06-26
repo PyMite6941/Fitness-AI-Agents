@@ -1,46 +1,74 @@
-name: Build iOS (compile check)
+name: Build iOS IPA
 
-# Free cloud COMPILE for iOS — GitHub provides macOS runners at no cost (within the
-# free minutes). XcodeGen turns the Swift files into an Xcode project, then xcodebuild
-# compiles it for the simulator. NOTE: this proves it builds; it can't install on a
-# device (that needs an iPhone, and distribution needs Apple's $99/yr program).
-# Manual trigger only (Actions tab -> Run workflow), since the scaffold may need fixes.
+# Free cloud build for iPhone. GitHub's macOS runners compile the app and package an
+# UNSIGNED .ipa — which anyone can install on their own iPhone for free with AltStore /
+# SideStore / Sideloadly (they re-sign it with your own free Apple ID, 7-day renewable).
+# No App Store, no $99 program needed to DOWNLOAD it. (Full HealthKit needs a paid
+# Apple account; see the /app page note.)
 
 on:
   workflow_dispatch: {}
+  push:
+    paths:
+      - 'mobile/ios/**'
+      - '.github/workflows/ios.yml'
+
+permissions:
+  contents: write          # auto-publish the .ipa back to the repo
 
 jobs:
   build:
     runs-on: macos-14
-    defaults:
-      run:
-        working-directory: mobile/ios
     steps:
       - uses: actions/checkout@v4
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
       - name: Generate Xcode project
+        working-directory: mobile/ios
         run: xcodegen generate
-      - name: Compile for simulator (no signing)
+
+      - name: Build unsigned archive + package .ipa
+        working-directory: mobile/ios
         run: |
-          xcodebuild build \
+          set -e
+          xcodebuild archive \
             -project FitnessAI.xcodeproj \
             -scheme FitnessAI \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            -archivePath build/FitnessAI.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | xcpretty || true
+          APP=$(find build/FitnessAI.xcarchive/Products/Applications -maxdepth 1 -name '*.app' -type d | head -1)
+          test -n "$APP"
+          rm -rf Payload && mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qr fitness-ai.ipa Payload
+          ls -la fitness-ai.ipa
 
-      - name: Zip the built .app (simulator build — NOT installable on a device)
-        if: success()
-        run: |
-          APP=$(find build/Build/Products -name 'FitnessAI.app' -type d | head -1)
-          echo "Built: $APP"
-          ditto -c -k --keepParent "$APP" FitnessAI-simulator.zip
-
-      - name: Upload simulator build
+      - name: Upload .ipa (downloadable artifact)
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: fitness-ai-ios-simulator
-          path: mobile/ios/FitnessAI-simulator.zip
-          if-no-files-found: warn
+          name: fitness-ai-ipa
+          path: mobile/ios/fitness-ai.ipa
+          if-no-files-found: error
+
+      - name: Publish .ipa to the website (/app)
+        if: success()
+        run: |
+          cp mobile/ios/fitness-ai.ipa frontend/public/fitness-ai.ipa
+          python3 - <<'PY'
+          import json
+          p = "frontend/public/version.json"
+          d = json.load(open(p))
+          d.setdefault("iosApp", {})["available"] = True
+          json.dump(d, open(p, "w"), indent=2)
+          PY
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/fitness-ai.ipa frontend/public/version.json
+          git commit -m "ci: publish built .ipa to /app [skip ci]" || echo "nothing to publish"
+          git push
