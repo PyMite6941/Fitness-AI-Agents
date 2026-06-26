@@ -13,6 +13,7 @@ import Coach from './pages/Coach.jsx'
 import Chat from './pages/Chat.jsx'
 import Privacy from './pages/Privacy.jsx'
 import Devices from './pages/Devices.jsx'
+import Pricing from './pages/Pricing.jsx'
 import { captureEvent, identifyUser, initAnalytics } from './lib/analytics.js'
 
 function ProtectedRoute({ children }) {
@@ -85,6 +86,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/demo" element={<DemoDashboard />} />
           <Route path="/app" element={<DownloadApp />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
           <Route path="/log" element={<ProtectedRoute><LogWorkout /></ProtectedRoute>} />
