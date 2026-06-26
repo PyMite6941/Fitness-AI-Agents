@@ -70,6 +70,7 @@ export default function FitnessAI() {
 				<div className='nav-links'>
 					<a href='#how-it-works'>How It Works</a>
 					<a href='#features'>Features</a>
+					<a href='/pricing'>Pricing</a>
 					<a href='#demo'>Live Demo</a>
 					<a href='/demo'>Sample Dashboard</a>
 					<a href='/app'>Get the App</a>
@@ -102,6 +103,7 @@ export default function FitnessAI() {
 						) : (
 							<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('hero_dashboard', 'Open dashboard')}>OPEN DASHBOARD</a>
 						)}
+						<a href='/pricing' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_pricing', 'See pricing')}>SEE PRICING</a>
 						<a href='#demo' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_live_demo', 'Try the live AI')}>TRY THE LIVE AI →</a>
 					</div>
 				</div>
@@ -212,6 +214,7 @@ export default function FitnessAI() {
 				<div className='footer-links'>
 					<div className='footer-group'>
 						<h4>Try it</h4>
+						<a href='/pricing'>Pricing</a>
 						<a href='/demo'>Sample Dashboard</a>
 						<a href='#demo'>Live AI Demo</a>
 						<a href='https://pymite6941-fitness-ai-agents-demo.hf.space' target='_blank' rel='noreferrer'>Agent Demo (HuggingFace) ↗</a>
