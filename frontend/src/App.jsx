@@ -90,18 +90,17 @@ export default function FitnessAI() {
 			<section className='hero'>
 				<div className='hero-overlay' />
 				<div className='hero-content'>
-					<p className='hero-tag'>ALL YOUR DATA. ONE ANALYSIS.</p>
-					<h1>TRAIN SMARTER.<br />RECOVER FASTER.</h1>
+					<h1>ANSWER CLIENT QUESTIONS BEFORE THEY PILE UP.</h1>
 					<p className='hero-sub'>
-						Connect Strava, Apple Watch, Garmin, Fitbit — or import from Nike, Google Fit, Apple Health. Every source makes your AI analysis stronger.
+						FitnessAI helps personal trainers and gym owners turn workout, nutrition, and scheduling questions into fast AI replies across WhatsApp, Telegram, and Messenger.
 					</p>
 					<div className='hero-actions'>
 						{!isSignedIn ? (
 							<SignUpButton mode="modal">
-								<button className='hero-btn' onClick={() => trackSignupStart('hero_start_free', 'Start for free')}>START FOR FREE</button>
+								<button className='hero-btn' onClick={() => trackSignupStart('hero_create_free_assistant', 'Create free assistant')}>CREATE FREE ASSISTANT</button>
 							</SignUpButton>
 						) : (
-							<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('hero_dashboard', 'Go to dashboard')}>GO TO DASHBOARD</a>
+							<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('hero_dashboard', 'Open dashboard')}>OPEN DASHBOARD</a>
 						)}
 						<a href='#demo' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_live_demo', 'Try the live AI')}>TRY THE LIVE AI →</a>
 					</div>
