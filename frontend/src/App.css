@@ -49,7 +49,7 @@ body {
 
 .nav-links {
 	display: flex;
-	gap: 36px;
+	gap: 24px;
 }
 
 .nav-links a {
@@ -465,7 +465,7 @@ body {
 }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
 	.nav { padding: 16px 24px; }
 	.nav-links { display: none; }
 	.hero {
