@@ -18,9 +18,14 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable   # XcodeGen emits a project format only a recent Xcode reads
 
       - name: Install XcodeGen
         run: brew install xcodegen
