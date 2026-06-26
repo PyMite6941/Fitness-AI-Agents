@@ -9,6 +9,7 @@ import {
 } from 'chart.js';
 import { Line, Bar, Doughnut, Scatter, Radar } from 'react-chartjs-2';
 import { api } from '../lib/api';
+import { captureActivationOnce, captureEvent } from '../lib/analytics';
 import './Dashboard.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler, RadialLinearScale, ScatterController);
@@ -181,13 +182,31 @@ export default function Dashboard() {
 		if (!context.trim()) return;
 		setAnalyzing(true);
 		setError('');
+		captureEvent('activation_started', {
+			activation_type: 'ai_analysis',
+			route: '/dashboard',
+		});
 		try {
 			const token = await getToken();
 			const result = await api.analyze(token, context);
 			setHistory(prev => [result, ...prev]);
 			setSelected(result);
 			setContext('');
+			captureEvent('analysis_completed', {
+				route: '/dashboard',
+				output_type: result.output_type || 'unknown',
+				has_metrics: Boolean(result.metrics?.length),
+				has_recommendations: Boolean(result.recommendations?.length),
+			});
+			captureActivationOnce({
+				activation_type: 'ai_analysis',
+				route: '/dashboard',
+			});
 		} catch (e) {
+			captureEvent('activation_failed', {
+				activation_type: 'ai_analysis',
+				route: '/dashboard',
+			});
 			setError(e.message);
 		} finally {
 			setAnalyzing(false);
@@ -197,11 +216,26 @@ export default function Dashboard() {
 	async function handleDemoSeed() {
 		setSeeding(true);
 		setError('');
+		captureEvent('activation_started', {
+			activation_type: 'sample_data_seed',
+			route: '/dashboard',
+		});
 		try {
 			const token = await getToken();
 			await api.demoSeed(token);
 			await load();
+			captureEvent('sample_data_loaded', {
+				route: '/dashboard',
+			});
+			captureActivationOnce({
+				activation_type: 'sample_data_seed',
+				route: '/dashboard',
+			});
 		} catch (e) {
+			captureEvent('activation_failed', {
+				activation_type: 'sample_data_seed',
+				route: '/dashboard',
+			});
 			setError(e.message);
 		} finally {
 			setSeeding(false);

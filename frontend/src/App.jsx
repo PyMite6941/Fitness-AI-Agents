@@ -2,6 +2,7 @@ import { SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
+import { captureEvent } from './lib/analytics';
 
 const features = [
 	{
@@ -45,6 +46,22 @@ export default function FitnessAI() {
 		if (isLoaded && isSignedIn) navigate('/dashboard', { replace: true });
 	}, [isLoaded, isSignedIn]);
 
+	function trackCtaClick(ctaId, label) {
+		captureEvent('cta_clicked', {
+			cta_id: ctaId,
+			label,
+			route: '/',
+		});
+	}
+
+	function trackSignupStart(source, label) {
+		trackCtaClick(source, label);
+		captureEvent('signup_started', {
+			source,
+			route: '/',
+		});
+	}
+
 	return (
 		<div className='page'>
 
@@ -61,7 +78,7 @@ export default function FitnessAI() {
 					{!isSignedIn ? (
 						<>
 							<SignInButton mode="modal"><button className='nav-btn'>Log In</button></SignInButton>
-							<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary'>Sign Up</button></SignUpButton>
+							<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary' onClick={() => trackSignupStart('nav_signup', 'Sign Up')}>Sign Up</button></SignUpButton>
 						</>
 					) : (
 						<UserButton />
@@ -81,12 +98,12 @@ export default function FitnessAI() {
 					<div className='hero-actions'>
 						{!isSignedIn ? (
 							<SignUpButton mode="modal">
-								<button className='hero-btn'>START FOR FREE</button>
+								<button className='hero-btn' onClick={() => trackSignupStart('hero_start_free', 'Start for free')}>START FOR FREE</button>
 							</SignUpButton>
 						) : (
-							<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
+							<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('hero_dashboard', 'Go to dashboard')}>GO TO DASHBOARD</a>
 						)}
-						<a href='#demo' className='hero-btn-ghost'>TRY THE LIVE AI →</a>
+						<a href='#demo' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_live_demo', 'Try the live AI')}>TRY THE LIVE AI →</a>
 					</div>
 				</div>
 				<div className='hero-scroll'>
@@ -164,6 +181,7 @@ export default function FitnessAI() {
 						href='https://pymite6941-fitness-ai-agents-demo.hf.space'
 						target='_blank'
 						rel='noreferrer'
+						onClick={() => trackCtaClick('demo_external', 'Open demo in new tab')}
 					>
 						OPEN DEMO IN NEW TAB ↗
 					</a>
@@ -177,10 +195,10 @@ export default function FitnessAI() {
 					<h2>Every workout tells a story.<br />Start reading yours.</h2>
 					{!isSignedIn ? (
 						<SignUpButton mode="modal">
-							<button className='hero-btn'>CREATE FREE ACCOUNT</button>
+							<button className='hero-btn' onClick={() => trackSignupStart('footer_create_account', 'Create free account')}>CREATE FREE ACCOUNT</button>
 						</SignUpButton>
 					) : (
-						<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
+						<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('footer_dashboard', 'Go to dashboard')}>GO TO DASHBOARD</a>
 					)}
 				</div>
 			</section>
