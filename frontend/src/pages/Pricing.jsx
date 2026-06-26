@@ -38,6 +38,23 @@ const tiers = [
 	},
 ];
 
+const evaluationLinks = [
+	{
+		title: 'Is FitnessAI free?',
+		copy: 'See what starter credits include and when the free tier should become the $20/month Professional plan.',
+		href: '/free',
+		cta: 'Read free tier',
+		source: 'pricing_free_page',
+	},
+	{
+		title: 'Where does it fit?',
+		copy: 'Compare trainer, gym-owner, and coaching-community workflows across WhatsApp, Telegram, and Messenger.',
+		href: '/use-cases',
+		cta: 'See use cases',
+		source: 'pricing_use_cases_page',
+	},
+];
+
 export default function Pricing() {
 	const { isSignedIn } = useAuth();
 	const navigate = useNavigate();
@@ -63,6 +80,8 @@ export default function Pricing() {
 				<a href='/' className='pricing-logo'>FitnessAI</a>
 				<div className='pricing-nav-links'>
 					<a href='/'>Home</a>
+					<a href='/free'>Free</a>
+					<a href='/use-cases'>Use Cases</a>
 					<a href='/#demo'>Demo</a>
 					<a href='/app'>Apps</a>
 				</div>
@@ -113,6 +132,21 @@ export default function Pricing() {
 								</SignUpButton>
 							)}
 						</article>
+					))}
+				</section>
+
+				<section className='pricing-paths' aria-label='Pricing evaluation links'>
+					{evaluationLinks.map((link) => (
+						<a
+							className='pricing-path-card'
+							href={link.href}
+							key={link.href}
+							onClick={() => captureEvent('cta_clicked', { cta_id: link.source, label: link.cta, route: '/pricing' })}
+						>
+							<span>{link.cta}</span>
+							<h2>{link.title}</h2>
+							<p>{link.copy}</p>
+						</a>
 					))}
 				</section>
 

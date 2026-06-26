@@ -91,8 +91,9 @@ export default function FitnessAI() {
 					<a href='#how-it-works'>How It Works</a>
 					<a href='#features'>Features</a>
 					<a href='/pricing'>Pricing</a>
+					<a href='/free'>Free</a>
+					<a href='/use-cases'>Use Cases</a>
 					<a href='#demo'>Live Demo</a>
-					<a href='/demo'>Sample Dashboard</a>
 					<a href='/app'>Get the App</a>
 				</div>
 				<div className='nav-auth'>
@@ -251,6 +252,8 @@ export default function FitnessAI() {
 					<div className='footer-group'>
 						<h4>Explore</h4>
 						<a href='/pricing'>Pricing</a>
+						<a href='/free'>Free tier</a>
+						<a href='/use-cases'>Use cases</a>
 						<a href='#features'>Features</a>
 						<a href='#faq'>FAQ</a>
 						<a href='/demo'>Sample Dashboard</a>
