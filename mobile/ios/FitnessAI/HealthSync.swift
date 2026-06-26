@@ -24,7 +24,7 @@ final class HealthSync {
     func requestAuthorization() async -> Bool {
         guard isAvailable else { return false }
         return await withCheckedContinuation { cont in
-            store.requestAuthorization(toShare: [], read: readTypes) { ok, _ in cont.resume(returning: ok) }
+            store.requestAuthorization(toShare: nil, read: readTypes) { ok, _ in cont.resume(returning: ok) }
         }
     }
 
