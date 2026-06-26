@@ -8,7 +8,7 @@ A fitness data intelligence platform with an AI analysis pipeline:
 
 - `backend/` — FastAPI API (Supabase DB, Clerk auth) and a CrewAI analysis crew. Deployed as a HuggingFace Space
 - `frontend/` — Vite + React 19 dashboard (Clerk auth, Leaflet maps, Chart.js). Deployed on Vercel. Public pages: `/demo` (no-auth sample dashboard), `/app` (Android tracker download + GitHub version check)
-- `mobile/` — native **Android** tracker app (Kotlin) that records steps/GPS in the background and POSTs to `/ingest`. **Scaffolded, not yet built/tested** — see `mobile/README.md` for build steps + the full TODO. `mobile/version.json` is the GitHub-read source of truth for app version/APK URL.
+- `mobile/` — native **Android** (Kotlin) + **iOS** (SwiftUI/HealthKit) tracker apps that record steps/GPS/Health and POST to `/ingest`. **Built free in GitHub Actions** (`.github/workflows/android.yml` / `ios.yml`) and auto-published to the site: the Android APK is live + downloadable from `/app`; iOS builds a sideloadable `.ipa`. Not yet tested on physical hardware. `frontend/public/version.json` is the public source of truth for app version/availability/URLs.
 
 ## Commands
 
@@ -109,10 +109,10 @@ Strava OAuth + Fitbit/Google-Health OAuth + file imports. **Universal `/integrat
 - **Security:** RLS deny-all on all tables (anon key returns 0 rows — verified); device tokens hashed; **per-user AI rate limit 200/day** (`ratelimit.py`); **`DELETE /user/data`** GDPR erase + `/privacy` page.
 - **13+ import sources** incl. universal `.fit/.tcx/.gpx`; Strava/Fitbit OAuth; manual + GPS.
 - Live Gradio agent demo (HF) embedded on the landing; `/demo` sample dashboard; `/app` PWA-install + Android download page; installable **PWA** (heartbeat icon); empty-state onboarding.
-- Phone pairing (`/device/*`, hashed tokens) live + verified end-to-end. Android + iOS apps **scaffolded** (`mobile/`).
+- Phone pairing (`/device/*`, hashed tokens) live + verified end-to-end, with a web UI at `/devices`. **Native apps build free in CI** (`.github/workflows/`): Android APK is live + downloadable from `/app`; iOS produces a sideloadable `.ipa`.
 - **Stress-tested** every component alone and together (DB → summary → LLM → output).
 
 **Remaining (config / hardware / optional — not blockers):**
 1. **OAuth redirect URIs** — register the exact callback in the Google + Strava consoles (`backend/DEPLOY-VERCEL.md` has them: `…/integrations/fitbit/callback` + Strava domain). Backend already builds them from `BACKEND_URL`. File imports need none of this.
-2. **Native apps** — build the Android APK (Android Studio → drop at `frontend/public/fitness-ai.apk`, set `version.json` `androidApp.available:true`) and the iOS app (Xcode, Mac). Both **hardware-blocked** for now; the PWA covers all platforms. `/app` shows the APK as "coming soon" until built.
+2. **Native apps** — now built **free in GitHub Actions** and auto-published to `/app` (Android APK live + downloadable; iOS sideloadable `.ipa` via `ios.yml`). Remaining: test on a real device, and a paid Apple Developer account for full HealthKit on iOS. The first iOS CI run may need a small fix (the Swift had never been compiled). Run builds from the repo's **Actions** tab.
 3. **Optional polish:** CI test suite, error monitoring (Sentry).

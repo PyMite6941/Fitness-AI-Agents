@@ -36,10 +36,14 @@ Phone (TrackingService) --steps/GPS--> Uploader --POST /ingest (Bearer fit_…)-
   URL baked into `app/build.gradle.kts`) and offers the new APK when `versionCode` there is
   higher than the installed build. **Not GitHub raw — the repo is private.**
 
-## Build the APK (you, on a machine with Android Studio)
+## Building the APK
 
-> ⚠️ This was scaffolded but **not compiled or tested** — treat it as a strong starting
-> point, not a finished app. Expect to resolve a few resource/icon issues on first build.
+> ✅ **The APK now builds automatically in GitHub Actions** (`.github/workflows/android.yml`)
+> and auto-publishes to `frontend/public/fitness-ai.apk`, so it's downloadable from the
+> site's `/app` page — no phone, Mac, or local toolchain needed. Just run the workflow
+> from the repo's **Actions** tab. Not yet tested on a physical device.
+>
+> The steps below are the **local** alternative (Android Studio) if you prefer.
 
 1. Install **Android Studio** (free). Open `mobile/android/` as a project; let it download
    the Gradle wrapper + SDKs.

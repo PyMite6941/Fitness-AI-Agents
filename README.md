@@ -82,15 +82,17 @@ We also learned how far you can take **free-tier infrastructure** with the right
 
 ---
 
-## What's next for Fitness AI Agents
+## Mobile apps — built in CI, downloadable now
 
-The web platform is complete and live. Here's what we're building next:
+The native apps build **in the cloud for free** via GitHub Actions (no phone, no Mac, no local toolchain) and auto-publish to the site:
 
-- **Native Android APK** — the Kotlin scaffold is already in `mobile/android/`. The app runs a background foreground service for step counting and GPS tracking, pairs to the account via a device token, and queues uploads with WorkManager. It just needs to be built and signed in Android Studio, then dropped at `frontend/public/fitness-ai.apk` for distribution from the site. No app store required.
-- **iOS HealthKit integration** — reads steps, HR, and sleep from iPhone and a paired Apple Watch in the background. Scaffold is in `mobile/ios/`. Hardware-blocked for now but the data path on the backend is already live.
-- **Always-on AI analysis** — the full 8-agent pipeline runs in the demo today. Bringing it into the main dashboard for all users just needs a dedicated model key with sufficient quota. That's a funding question, not an engineering one.
-- **FitnessAI Watch** — a custom open-hardware ESP32-C3 smartwatch (HR sensor, step counter, GPS) that pairs directly to the platform. We built and archived the earlier firmware in `watch-archive/` and will pick it back up once the software side is fully stable.
-- **Weekly digest** — a scheduled email summarizing the past week: training load, readiness trend, coach plan progress, and one standout insight from the AI.
+- **Android (live, downloadable):** the `.github/workflows/android.yml` job compiles the Kotlin app (`mobile/android/`), then copies the APK to `frontend/public/fitness-ai.apk` and flips it on — so the **`/app` page serves a real installable APK today** (`fitness-ai-agents.vercel.app/fitness-ai.apk`). Background step/GPS tracking, device-token pairing, offline queue. Pending: real-hardware testing.
+- **iOS (free sideload):** `ios.yml` compiles on a macOS runner and packages an **unsigned `.ipa`**, published to `/app`. Anyone installs it free with **AltStore / SideStore / Sideloadly** using their own Apple ID (7-day renew) — no App Store, no $99 program to *download*. Full Apple Health access requires a paid Apple Developer account.
+
+### Still on the roadmap
+- **Always-on in-dashboard AI analysis** — the 8-agent pipeline runs in the demo today; making it always-on for every user needs a dedicated model key with quota (funding, not engineering).
+- **FitnessAI Watch** — a custom open-hardware ESP32-C3 smartwatch (HR, steps, GPS) that pairs directly. Earlier firmware archived in `watch-archive/`.
+- **Weekly digest** — scheduled email: training load, readiness trend, coach progress, and a standout AI insight.
 
 ---
 
@@ -109,6 +111,7 @@ User Data → Multi-Agent AI Pipeline → Visual Insights
 | AI — analysis | 8-agent **CrewAI** pipeline (runs in the HF demo Space) |
 | AI — coach / chat | Single-call, multi-model failover (`llm_lite.py`), Groq → OpenRouter, quota-aware |
 | AI — readiness / alerts | Deterministic sports-science math (no model calls) |
+| Mobile | Native Android (Kotlin) + iOS (SwiftUI/HealthKit), built free in GitHub Actions → published to `/app` |
 
 ## Quick Start
 
@@ -132,6 +135,8 @@ npm run dev
 [Live demo](https://fitness-ai-agents.vercel.app) — sign up, click "Load Sample Data", and see the full dashboard populated with 31 days of realistic fitness data and AI analysis results.
 
 Try the agents with **no signup**: the `/demo` sample dashboard, or the live Gradio demo embedded on the landing page (also at https://pymite6941-fitness-ai-agents-demo.hf.space).
+
+**Get the apps:** the **`/app`** page serves the installable **Android APK** today and (when the iOS job has run) a sideloadable **`.ipa`** — both built free in GitHub Actions.
 
 ## License
 

@@ -18,9 +18,12 @@ mobile/ios/FitnessAI/
   FitnessAI.entitlements # HealthKit + background delivery
 ```
 
-> ⚠️ **Scaffolded, NOT compiled or tested.** Building/running iOS requires **macOS +
-> Xcode + an iPhone** — it cannot be built on Windows/Linux. Treat this as a faithful
-> starting point; expect to wire it into an Xcode project and fix a few things on first run.
+> ✅ **Builds free in GitHub Actions** (`.github/workflows/ios.yml`): a macOS runner uses
+> `project.yml` (XcodeGen) to generate the Xcode project, compiles the app, and packages an
+> **unsigned `.ipa`** that auto-publishes to `/app`. Install it free with AltStore / SideStore /
+> Sideloadly using your own Apple ID (7-day renew). The first CI run may need a small fix
+> (the Swift had never been compiled). **Full HealthKit needs a paid Apple Developer account**;
+> the App Store needs the $99/yr program. Local Xcode steps below are the alternative.
 
 ## Build & test (you, on a Mac)
 
