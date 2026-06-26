@@ -6,36 +6,56 @@ import { captureEvent } from './lib/analytics';
 
 const features = [
 	{
-		icon: '📱',
-		title: 'Import From Any Source',
-		desc: 'Strava, Fitbit, Garmin, Apple Health, Nike Run Club, Google Fit, COROS, Suunto, Wahoo, Polar, Zwift, Peloton — or any .fit/.tcx/.gpx file.',
+		label: 'Channel coverage',
+		title: 'Meet clients where they ask',
+		desc: 'Shape assistants for WhatsApp, Telegram, and Messenger so client questions can move through the channels trainers already use.',
 	},
 	{
-		icon: '🔄',
-		title: 'Merge Everything',
-		desc: 'Data from your Apple Watch, Garmin, Strava, and manual logs all gets merged into one unified view. No duplicates, no gaps.',
+		label: 'Knowledge base',
+		title: 'Train it on your playbook',
+		desc: 'Use workout routines, nutrition rules, onboarding notes, and gym policies as the source for more useful assistant replies.',
 	},
 	{
-		icon: '🤖',
-		title: 'Multi-Agent AI Analysis',
-		desc: 'A pipeline of specialized AI agents cleans, interprets, and turns your raw data into clear insights — with source-level awareness.',
+		label: 'Persona control',
+		title: 'Keep the coach voice consistent',
+		desc: 'Set a persona for the assistant so replies sound like the business instead of a generic chatbot.',
 	},
 	{
-		icon: '📈',
-		title: 'Trend Detection',
-		desc: 'Spot patterns across weeks and months — recovery dips, performance peaks, sleep impact on output.',
-	},
-	{
-		icon: '🎯',
-		title: 'Actionable Recommendations',
-		desc: 'Not just charts. Every analysis ends with specific, data-backed steps you can take today.',
+		label: 'Upgrade path',
+		title: 'Start free, then scale',
+		desc: 'Test with starter credits, then move to the $20/month Professional plan when client question volume justifies it.',
 	},
 ];
 
 const steps = [
-	{ number: '01', title: 'Connect Your Sources', desc: 'Sync Strava, Fitbit, or Garmin via OAuth. Import from Apple Health, Nike Run Club, or Google Fit. Log manually. We merge everything by source.' },
-	{ number: '02', title: 'Ask a Question', desc: 'Tell the AI what you want to know — in plain English, no technical knowledge needed.' },
-	{ number: '03', title: 'Get Your Analysis', desc: 'Receive a full breakdown with findings, anomalies, and recommendations — aware of which source each insight came from.' },
+	{ number: '01', title: 'Pick a question stream', desc: 'Start with the repeated questions clients already send about workouts, nutrition, timing, PRs, and setup.' },
+	{ number: '02', title: 'Add the source material', desc: 'Give the assistant your routines, nutrition notes, gym policies, and preferred coaching persona so replies have a clear base.' },
+	{ number: '03', title: 'Review and expand', desc: 'Test replies with starter credits, use them with a small client group, then expand the assistant once the answers are working.' },
+];
+
+const proofStats = [
+	{ value: '3', label: 'Messaging channels', desc: 'WhatsApp, Telegram, and Messenger are the first client-response paths named on the site.' },
+	{ value: '2', label: 'Public plan paths', desc: 'Free starter credits and the $20/month Professional plan are now visible before signup.' },
+	{ value: '4', label: 'Question types', desc: 'Workouts, nutrition, timing, and PRs are the first repeated client questions called out.' },
+];
+
+const faqItems = [
+	{
+		question: 'How fast can I test the assistant?',
+		answer: 'Start with a free account and starter credits. Use one common client question first, then add more routines or policies after the first replies look right.',
+	},
+	{
+		question: 'Which messaging channels does this fit?',
+		answer: 'The first customer workflows are built around WhatsApp, Telegram, and Messenger because those are where trainers and gym owners already answer quick client questions.',
+	},
+	{
+		question: 'What does the $20/month plan change?',
+		answer: 'The free tier is for evaluation. The Professional plan gives a higher monthly credit allowance for ongoing client reply volume.',
+	},
+	{
+		question: 'Can the assistant match my coaching style?',
+		answer: 'Yes. The assistant is framed around your knowledge base and a defined persona so the answer can follow your routines, tone, and boundaries.',
+	},
 ];
 
 export default function FitnessAI() {
@@ -114,21 +134,21 @@ export default function FitnessAI() {
 			</section>
 
 			{/* STATS BAR */}
-			<div className='stats-bar'>
-				<div className='stat'><strong>13+</strong><span>Platform Integrations</span></div>
-				<div className='stat-divider' />
-				<div className='stat'><strong>.fit/.tcx/.gpx</strong><span>Universal Import</span></div>
-				<div className='stat-divider' />
-				<div className='stat'><strong>&lt;30s</strong><span>Analysis Time</span></div>
-				<div className='stat-divider' />
-				<div className='stat'><strong>100%</strong><span>Your Data</span></div>
-			</div>
+			<section className='proof-row' aria-label='FitnessAI proof points'>
+				{proofStats.map((proof) => (
+					<div className='proof-stat' key={proof.label}>
+						<strong>{proof.value}</strong>
+						<span>{proof.label}</span>
+						<p>{proof.desc}</p>
+					</div>
+				))}
+			</section>
 
 			{/* HOW IT WORKS */}
 			<section className='section' id='how-it-works'>
 				<div className='section-inner'>
 					<p className='section-tag'>THE PROCESS</p>
-					<h2 className='section-heading'>Three steps to better training</h2>
+					<h2 className='section-heading'>Three steps to a client-answering assistant</h2>
 					<div className='steps'>
 						{steps.map((s) => (
 							<div className='step' key={s.number}>
@@ -145,11 +165,11 @@ export default function FitnessAI() {
 			<section className='section section-dark' id='features'>
 				<div className='section-inner'>
 					<p className='section-tag'>CAPABILITIES</p>
-					<h2 className='section-heading'>Everything your coach wishes they had</h2>
+					<h2 className='section-heading'>Built around the questions clients repeat</h2>
 					<div className='features'>
 						{features.map((f) => (
 							<div className='feature-card' key={f.title}>
-								<span className='feature-icon'>{f.icon}</span>
+								<span className='feature-label'>{f.label}</span>
 								<h3>{f.title}</h3>
 								<p>{f.desc}</p>
 							</div>
@@ -162,11 +182,9 @@ export default function FitnessAI() {
 			<section className='section' id='demo'>
 				<div className='section-inner'>
 					<p className='section-tag'>TRY IT NOW</p>
-					<h2 className='section-heading'>Run the AI — no signup required</h2>
+					<h2 className='section-heading'>Try the AI before you build your assistant</h2>
 					<p className='demo-sub'>
-						This is the real multi-agent pipeline. Hit <strong>Run Analysis</strong> with the
-						built-in sample data for an instant breakdown, or upload your own CSV to run the
-						full 8-agent crew live.
+						Use the live demo to check how the AI handles fitness questions and source material before you create an account.
 					</p>
 					<div className='demo-frame-wrap'>
 						<iframe
@@ -189,11 +207,29 @@ export default function FitnessAI() {
 				</div>
 			</section>
 
+			{/* FAQ */}
+			<section className='section section-dark' id='faq'>
+				<div className='section-inner faq-layout'>
+					<div>
+						<p className='section-tag'>FAQ</p>
+						<h2 className='section-heading'>The setup questions buyers ask first</h2>
+					</div>
+					<div className='faq-list'>
+						{faqItems.map((item) => (
+							<article className='faq-item' key={item.question}>
+								<h3>{item.question}</h3>
+								<p>{item.answer}</p>
+							</article>
+						))}
+					</div>
+				</div>
+			</section>
+
 			{/* CTA */}
 			<section className='cta-section'>
 				<div className='cta-inner'>
 					<p className='section-tag'>GET STARTED</p>
-					<h2>Every workout tells a story.<br />Start reading yours.</h2>
+					<h2>Your clients already have questions.<br />Give them the first answer.</h2>
 					{!isSignedIn ? (
 						<SignUpButton mode="modal">
 							<button className='hero-btn' onClick={() => trackSignupStart('footer_create_account', 'Create free account')}>CREATE FREE ACCOUNT</button>
@@ -213,11 +249,17 @@ export default function FitnessAI() {
 				</div>
 				<div className='footer-links'>
 					<div className='footer-group'>
-						<h4>Try it</h4>
+						<h4>Explore</h4>
 						<a href='/pricing'>Pricing</a>
+						<a href='#features'>Features</a>
+						<a href='#faq'>FAQ</a>
 						<a href='/demo'>Sample Dashboard</a>
 						<a href='#demo'>Live AI Demo</a>
-						<a href='https://pymite6941-fitness-ai-agents-demo.hf.space' target='_blank' rel='noreferrer'>Agent Demo (HuggingFace) ↗</a>
+					</div>
+					<div className='footer-group'>
+						<h4>Contact</h4>
+						<a href='https://github.com/PyMite6941/Fitness-AI-Agents' target='_blank' rel='noreferrer'>GitHub repo</a>
+						<a href='#faq'>Setup questions</a>
 					</div>
 					<div className='footer-group'>
 						<h4>Apps</h4>
