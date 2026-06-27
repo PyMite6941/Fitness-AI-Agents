@@ -4,7 +4,7 @@ import {
 	CategoryScale, LinearScale, PointElement, LineElement,
 	BarElement, ArcElement, Tooltip, Legend, Filler,
 } from 'chart.js';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import './DemoDashboard.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler);

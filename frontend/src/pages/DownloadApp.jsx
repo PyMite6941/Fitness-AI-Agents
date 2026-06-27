@@ -46,7 +46,8 @@ export default function DownloadApp() {
 		setInstallPrompt(null);
 	}
 
-	const PwaButton = () => (
+	// Plain render helper (NOT a component) — avoids remounting on every render.
+	const pwaButton = () => (
 		installed
 			? <span className='dl-installed'>✓ Installed — open it from your home screen</span>
 			: installPrompt
@@ -75,7 +76,7 @@ export default function DownloadApp() {
 					Install FitnessAI from your browser as a real app on your home screen — works right now,
 					no Play Store, no sideloading.
 				</p>
-				<PwaButton />
+				{pwaButton()}
 				{!installPrompt && !installed && (
 					<ol className='dl-steps dl-steps-tight'>
 						<li>Open this page in <strong>Chrome</strong> on your phone.</li>
@@ -136,7 +137,7 @@ export default function DownloadApp() {
 					Install FitnessAI as a desktop app from Chrome or Edge. Or scan the code to open this
 					page on your phone.
 				</p>
-				<PwaButton />
+				{pwaButton()}
 				{!installPrompt && !installed && (
 					<p className='dl-sub'>In Chrome/Edge, click the <strong>Install</strong> icon in the address bar (or menu → <em>Install FitnessAI</em>).</p>
 				)}
@@ -149,12 +150,11 @@ export default function DownloadApp() {
 				)}
 			</div>
 
-			{/* Pairing — only relevant once the native tracker ships */}
+			{/* Pairing */}
 			<div className='dl-card'>
-				<h3>Pair a phone to your account <span className='dl-soon-badge'>native tracker · soon</span></h3>
+				<h3>Pair a phone to your account</h3>
 				<p className='dl-sub'>
-					When the native background tracker ships, you'll link it to your account with a one-time
-					code (no password on the device):
+					Link the native app to your account with a one-time code (no password on the device):
 				</p>
 				<ol className='dl-steps'>
 					<li>Web app → <strong>Devices</strong> (sidebar) → <strong>Generate pairing code</strong> (a <code>fit_</code> code, also shown as a QR).</li>
