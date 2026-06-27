@@ -14,8 +14,9 @@
 #define DEVICE_NAME     "fitness_watch"
 
 // ── I2C bus (the OLED, plus future sensors, share this) ──────────────────────
-#define PIN_I2C_SDA     8
-#define PIN_I2C_SCL     9
+// Per the actual board wiring: screen SCK (clock) -> GPIO 8, SDA (data) -> GPIO 9.
+#define PIN_I2C_SDA     9               // data  (screen SDA)
+#define PIN_I2C_SCL     8               // clock (screen SCK)
 #define I2C_CLOCK_HZ    400000          // 400 kHz fast-mode
 
 // ── OLED display (SSD1306 128x64) ────────────────────────────────────────────
