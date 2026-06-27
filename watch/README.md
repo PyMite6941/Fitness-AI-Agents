@@ -5,8 +5,10 @@ platform: it tracks heart rate, steps, and GPS workouts on-device and syncs them
 account, where the AI does the analysis. Built on a **$3 ESP32-C3** and a handful of I2C
 modules — no proprietary ecosystem.
 
-> **Status:** Milestone 1 — pin/port scaffold + boot loading screen.
-> Compiles clean for `esp32:esp32:esp32c3` (25% flash, 4% RAM). Not yet tested on hardware.
+> **Status:** Milestone 1 — screen + program skeleton: boot loading screen → live home
+> screen (placeholder clock). Compiles clean for `esp32:esp32:esp32c3` (25% flash, 4% RAM);
+> not yet tested on hardware. **`config.h` is currently screen-only** (I2C + OLED); the
+> full pin map below is the target wiring, added back as each peripheral milestone lands.
 
 ```
 watch/firmware/fitness_watch/
@@ -96,7 +98,7 @@ Full-buffer mode (`U8G2_..._F_HW_I2C`) is used — the C3 has ample RAM.
 
 ## Roadmap
 
-- [x] **M1** — pin/port scaffold + boot loading screen
+- [x] **M1** — screen + program skeleton: boot loading screen → live home screen
 - [ ] **M2** — clock / home screen + button navigation (tap = cycle, hold = action)
 - [ ] **M3** — sensors: MPU6050 step counter + MAX30102 heart rate
 - [ ] **M4** — Wi-Fi pairing (phone hotspot captive portal) + device-token storage
