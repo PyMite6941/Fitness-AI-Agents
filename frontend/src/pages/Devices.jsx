@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/react';
 import { api } from '../lib/api';
@@ -13,12 +13,18 @@ export default function Devices() {
 	const [copied, setCopied] = useState(false);
 	const [error, setError] = useState('');
 
-	useEffect(() => { load(); }, []);
-
-	async function load() {
+	const load = useCallback(async () => {
 		try { setDevices((await api.listDevices(await getToken())).devices || []); }
 		catch (e) { setError(e.message); }
-	}
+	}, [getToken]);
+
+	useEffect(() => {
+		let active = true;
+		queueMicrotask(() => {
+			if (active) load();
+		});
+		return () => { active = false; };
+	}, [load]);
 
 	async function generate() {
 		setBusy('gen'); setError(''); setCode('');

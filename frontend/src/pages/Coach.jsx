@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/react';
 import { api } from '../lib/api';
@@ -21,9 +21,7 @@ export default function Coach() {
 	const [error, setError] = useState('');
 	const [usage, setUsage] = useState(null);
 
-	useEffect(() => { load(); }, []);
-
-	async function load() {
+	const load = useCallback(async () => {
 		setLoading(true);
 		try {
 			const token = await getToken();
@@ -37,7 +35,15 @@ export default function Coach() {
 			setPlan(p?.plan ? p : null);
 		} catch (e) { setError(e.message); }
 		finally { setLoading(false); }
-	}
+	}, [getToken]);
+
+	useEffect(() => {
+		let active = true;
+		queueMicrotask(() => {
+			if (active) load();
+		});
+		return () => { active = false; };
+	}, [load]);
 
 	async function generate() {
 		if (!goal.trim()) { setError('Tell the coach your goal first.'); return; }

@@ -23,8 +23,15 @@ function MapFlyTo({ coords }) {
 		if (coords.length > 0) {
 			map.flyTo([coords[coords.length - 1].lat, coords[coords.length - 1].lng], 15, { duration: 0.5 });
 		}
-	}, [coords.length]);
+	}, [coords, map]);
 	return null;
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+	const R = 6371000, p = Math.PI / 180;
+	const a = Math.sin((lat2 - lat1) * p / 2) ** 2 +
+		Math.cos(lat1 * p) * Math.cos(lat2 * p) * Math.sin((lng2 - lng1) * p / 2) ** 2;
+	return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 function formatDuration(seconds) {
@@ -60,12 +67,7 @@ export default function Routes() {
 	const watchId = useRef(null);
 	const timerRef = useRef(null);
 
-	useEffect(() => {
-		loadRoutes();
-		return () => stopTracking();
-	}, []);
-
-	async function loadRoutes() {
+	const loadRoutes = useCallback(async () => {
 		setLoading(true);
 		try {
 			const token = await getToken();
@@ -76,14 +78,30 @@ export default function Routes() {
 		} finally {
 			setLoading(false);
 		}
-	}
+	}, [getToken]);
 
-	function haversine(lat1, lng1, lat2, lng2) {
-		const R = 6371000, p = Math.PI / 180;
-		const a = Math.sin((lat2 - lat1) * p / 2) ** 2 +
-			Math.cos(lat1 * p) * Math.cos(lat2 * p) * Math.sin((lng2 - lng1) * p / 2) ** 2;
-		return 2 * R * Math.asin(Math.sqrt(a));
-	}
+	const stopTracking = useCallback(() => {
+		if (watchId.current !== null) {
+			navigator.geolocation.clearWatch(watchId.current);
+			watchId.current = null;
+		}
+		if (timerRef.current) {
+			clearInterval(timerRef.current);
+			timerRef.current = null;
+		}
+		setTracking(false);
+	}, []);
+
+	useEffect(() => {
+		let active = true;
+		queueMicrotask(() => {
+			if (active) loadRoutes();
+		});
+		return () => {
+			active = false;
+			stopTracking();
+		};
+	}, [loadRoutes, stopTracking]);
 
 	const startTracking = useCallback(() => {
 		if (!navigator.geolocation) {
@@ -119,18 +137,6 @@ export default function Routes() {
 
 		timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
 	}, []);
-
-	function stopTracking() {
-		if (watchId.current !== null) {
-			navigator.geolocation.clearWatch(watchId.current);
-			watchId.current = null;
-		}
-		if (timerRef.current) {
-			clearInterval(timerRef.current);
-			timerRef.current = null;
-		}
-		setTracking(false);
-	}
 
 	async function saveRoute() {
 		if (coords.length < 2) { setError('Not enough GPS data to save.'); return; }
