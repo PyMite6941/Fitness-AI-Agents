@@ -9,6 +9,7 @@ A fitness data intelligence platform with an AI analysis pipeline:
 - `backend/` — FastAPI API (Supabase DB, Clerk auth) and a CrewAI analysis crew. Deployed as a HuggingFace Space
 - `frontend/` — Vite + React 19 dashboard (Clerk auth, Leaflet maps, Chart.js). Deployed on Vercel. Public pages: `/demo` (no-auth sample dashboard), `/app` (Android tracker download + GitHub version check)
 - `mobile/` — native **Android** (Kotlin) + **iOS** (SwiftUI/HealthKit) tracker apps that record steps/GPS/Health and POST to `/ingest`. **Built free in GitHub Actions** (`.github/workflows/android.yml` / `ios.yml`) and auto-published to the site: the Android APK is live + downloadable from `/app`; iOS builds a sideloadable `.ipa`. Not yet tested on physical hardware. `frontend/public/version.json` is the public source of truth for app version/availability/URLs.
+- `watch/` — **FitnessAI Watch** firmware (ESP32-C3 SuperMini + SSD1306 OLED, Arduino/U8g2). Revived from `watch-archive/` as a fresh, single-purpose build. **All wiring is in `watch/firmware/fitness_watch/config.h`** (the only file to edit per build); `fitness_watch.ino` is the main sketch. Milestone 1 = pin scaffold + boot loading screen; compiles clean for `esp32:esp32:esp32c3`. Full hardware/pin/build docs + roadmap in `watch/README.md`. Pairs to the platform via the device-token system (web app → Devices).
 
 ## Commands
 

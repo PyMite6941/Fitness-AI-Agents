@@ -2,39 +2,60 @@ import { SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
+import { captureEvent } from './lib/analytics';
 
 const features = [
 	{
-		icon: '📱',
-		title: 'Import From Any Source',
-		desc: 'Strava, Fitbit, Garmin, Apple Health, Nike Run Club, Google Fit, COROS, Suunto, Wahoo, Polar, Zwift, Peloton — or any .fit/.tcx/.gpx file.',
+		label: 'Channel coverage',
+		title: 'Meet clients where they ask',
+		desc: 'Shape assistants for WhatsApp, Telegram, and Messenger so client questions can move through the channels trainers already use.',
 	},
 	{
-		icon: '🔄',
-		title: 'Merge Everything',
-		desc: 'Data from your Apple Watch, Garmin, Strava, and manual logs all gets merged into one unified view. No duplicates, no gaps.',
+		label: 'Knowledge base',
+		title: 'Train it on your playbook',
+		desc: 'Use workout routines, nutrition rules, onboarding notes, and gym policies as the source for more useful assistant replies.',
 	},
 	{
-		icon: '🤖',
-		title: 'Multi-Agent AI Analysis',
-		desc: 'A pipeline of specialized AI agents cleans, interprets, and turns your raw data into clear insights — with source-level awareness.',
+		label: 'Persona control',
+		title: 'Keep the coach voice consistent',
+		desc: 'Set a persona for the assistant so replies sound like the business instead of a generic chatbot.',
 	},
 	{
-		icon: '📈',
-		title: 'Trend Detection',
-		desc: 'Spot patterns across weeks and months — recovery dips, performance peaks, sleep impact on output.',
-	},
-	{
-		icon: '🎯',
-		title: 'Actionable Recommendations',
-		desc: 'Not just charts. Every analysis ends with specific, data-backed steps you can take today.',
+		label: 'Upgrade path',
+		title: 'Start free, then scale',
+		desc: 'Test with starter credits, then move to the $20/month Professional plan when client question volume justifies it.',
 	},
 ];
 
 const steps = [
-	{ number: '01', title: 'Connect Your Sources', desc: 'Sync Strava, Fitbit, or Garmin via OAuth. Import from Apple Health, Nike Run Club, or Google Fit. Log manually. We merge everything by source.' },
-	{ number: '02', title: 'Ask a Question', desc: 'Tell the AI what you want to know — in plain English, no technical knowledge needed.' },
-	{ number: '03', title: 'Get Your Analysis', desc: 'Receive a full breakdown with findings, anomalies, and recommendations — aware of which source each insight came from.' },
+	{ number: '01', title: 'Pick a question stream', desc: 'Start with the repeated questions clients already send about workouts, nutrition, timing, PRs, and setup.' },
+	{ number: '02', title: 'Add the source material', desc: 'Give the assistant your routines, nutrition notes, gym policies, and preferred coaching persona so replies have a clear base.' },
+	{ number: '03', title: 'Review and expand', desc: 'Test replies with starter credits, use them with a small client group, then expand the assistant once the answers are working.' },
+];
+
+const proofStats = [
+	{ value: '3', label: 'Messaging channels', desc: 'WhatsApp, Telegram, and Messenger are the first client-response paths named on the site.' },
+	{ value: '2', label: 'Public plan paths', desc: 'Free starter credits and the $20/month Professional plan are now visible before signup.' },
+	{ value: '4', label: 'Question types', desc: 'Workouts, nutrition, timing, and PRs are the first repeated client questions called out.' },
+];
+
+const faqItems = [
+	{
+		question: 'How fast can I test the assistant?',
+		answer: 'Start with a free account and starter credits. Use one common client question first, then add more routines or policies after the first replies look right.',
+	},
+	{
+		question: 'Which messaging channels does this fit?',
+		answer: 'The first customer workflows are built around WhatsApp, Telegram, and Messenger because those are where trainers and gym owners already answer quick client questions.',
+	},
+	{
+		question: 'What does the $20/month plan change?',
+		answer: 'The free tier is for evaluation. The Professional plan gives a higher monthly credit allowance for ongoing client reply volume.',
+	},
+	{
+		question: 'Can the assistant match my coaching style?',
+		answer: 'Yes. The assistant is framed around your knowledge base and a defined persona so the answer can follow your routines, tone, and boundaries.',
+	},
 ];
 
 export default function FitnessAI() {
@@ -45,6 +66,22 @@ export default function FitnessAI() {
 		if (isLoaded && isSignedIn) navigate('/dashboard', { replace: true });
 	}, [isLoaded, isSignedIn]);
 
+	function trackCtaClick(ctaId, label) {
+		captureEvent('cta_clicked', {
+			cta_id: ctaId,
+			label,
+			route: '/',
+		});
+	}
+
+	function trackSignupStart(source, label) {
+		trackCtaClick(source, label);
+		captureEvent('signup_started', {
+			source,
+			route: '/',
+		});
+	}
+
 	return (
 		<div className='page'>
 
@@ -53,15 +90,17 @@ export default function FitnessAI() {
 				<div className='nav-links'>
 					<a href='#how-it-works'>How It Works</a>
 					<a href='#features'>Features</a>
+					<a href='/pricing'>Pricing</a>
+					<a href='/free'>Free</a>
+					<a href='/use-cases'>Use Cases</a>
 					<a href='#demo'>Live Demo</a>
-					<a href='/demo'>Sample Dashboard</a>
 					<a href='/app'>Get the App</a>
 				</div>
 				<div className='nav-auth'>
 					{!isSignedIn ? (
 						<>
 							<SignInButton mode="modal"><button className='nav-btn'>Log In</button></SignInButton>
-							<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary'>Sign Up</button></SignUpButton>
+							<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary' onClick={() => trackSignupStart('nav_signup', 'Sign Up')}>Sign Up</button></SignUpButton>
 						</>
 					) : (
 						<UserButton />
@@ -70,121 +109,138 @@ export default function FitnessAI() {
 			</nav>
 
 			<main>
-				{/* HERO */}
-				<section className='hero'>
-					<div className='hero-overlay' />
-					<div className='hero-content'>
-						<p className='hero-tag'>ALL YOUR DATA. ONE ANALYSIS.</p>
-						<h1>TRAIN SMARTER.<br />RECOVER FASTER.</h1>
-						<p className='hero-sub'>
-							Connect Strava, Apple Watch, Garmin, Fitbit — or import from Nike, Google Fit, Apple Health. Every source makes your AI analysis stronger.
-						</p>
-						<div className='hero-actions'>
-							{!isSignedIn ? (
-								<SignUpButton mode="modal">
-									<button className='hero-btn'>START FOR FREE</button>
-								</SignUpButton>
-							) : (
-								<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
-							)}
-							<a href='#demo' className='hero-btn-ghost'>TRY THE LIVE AI →</a>
-						</div>
-					</div>
-					<div className='hero-scroll' aria-hidden='true'>
-						<span>SCROLL</span>
-						<div className='hero-scroll-line' />
-					</div>
-				</section>
-
-				{/* STATS BAR */}
-				<div className='stats-bar'>
-					<div className='stat'><strong>13+</strong><span>Platform Integrations</span></div>
-					<div className='stat-divider' />
-					<div className='stat'><strong>.fit/.tcx/.gpx</strong><span>Universal Import</span></div>
-					<div className='stat-divider' />
-					<div className='stat'><strong>&lt;30s</strong><span>Analysis Time</span></div>
-					<div className='stat-divider' />
-					<div className='stat'><strong>100%</strong><span>Your Data</span></div>
-				</div>
-
-				{/* HOW IT WORKS */}
-				<section className='section' id='how-it-works'>
-					<div className='section-inner'>
-						<p className='section-tag'>THE PROCESS</p>
-						<h2 className='section-heading'>Three steps to better training</h2>
-						<div className='steps'>
-							{steps.map((s) => (
-								<div className='step' key={s.number}>
-									<span className='step-number'>{s.number}</span>
-									<h3>{s.title}</h3>
-									<p>{s.desc}</p>
-								</div>
-							))}
-						</div>
-					</div>
-				</section>
-
-				{/* FEATURES */}
-				<section className='section section-dark' id='features'>
-					<div className='section-inner'>
-						<p className='section-tag'>CAPABILITIES</p>
-						<h2 className='section-heading'>Everything your coach wishes they had</h2>
-						<div className='features'>
-							{features.map((f) => (
-								<div className='feature-card' key={f.title}>
-									<span className='feature-icon' aria-hidden='true'>{f.icon}</span>
-									<h3>{f.title}</h3>
-									<p>{f.desc}</p>
-								</div>
-							))}
-						</div>
-					</div>
-				</section>
-
-				{/* LIVE DEMO */}
-				<section className='section' id='demo'>
-					<div className='section-inner'>
-						<p className='section-tag'>TRY IT NOW</p>
-						<h2 className='section-heading'>Run the AI — no signup required</h2>
-						<p className='demo-sub'>
-							This is the real multi-agent pipeline. Hit <strong>Run Analysis</strong> with the
-							built-in sample data for an instant breakdown, or upload your own CSV to run the
-							full 8-agent crew live.
-						</p>
-						<div className='demo-frame-wrap'>
-							<iframe
-								title='Fitness AI Agents — live demo'
-								src='https://pymite6941-fitness-ai-agents-demo.hf.space'
-								className='demo-frame'
-								loading='lazy'
-								allow='clipboard-write'
-							/>
-						</div>
-						<a
-							className='hero-btn-ghost'
-							href='https://pymite6941-fitness-ai-agents-demo.hf.space'
-							target='_blank'
-							rel='noopener noreferrer'
-						>
-							OPEN DEMO IN NEW TAB ↗
-						</a>
-					</div>
-				</section>
-
-				{/* CTA */}
-				<section className='cta-section'>
-					<div className='cta-inner'>
-						<p className='section-tag'>GET STARTED</p>
-						<h2>Every workout tells a story.<br />Start reading yours.</h2>
+			{/* HERO */}
+			<section className='hero'>
+				<div className='hero-overlay' />
+				<div className='hero-content'>
+					<h1>ANSWER CLIENT QUESTIONS BEFORE THEY PILE UP.</h1>
+					<p className='hero-sub'>
+						FitnessAI helps personal trainers and gym owners turn workout, nutrition, and scheduling questions into fast AI replies across WhatsApp, Telegram, and Messenger.
+					</p>
+					<div className='hero-actions'>
 						{!isSignedIn ? (
 							<SignUpButton mode="modal">
-								<button className='hero-btn'>CREATE FREE ACCOUNT</button>
+								<button className='hero-btn' onClick={() => trackSignupStart('hero_create_free_assistant', 'Create free assistant')}>CREATE FREE ASSISTANT</button>
 							</SignUpButton>
 						) : (
-							<a href='/dashboard' className='hero-btn'>GO TO DASHBOARD</a>
+							<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('hero_dashboard', 'Open dashboard')}>OPEN DASHBOARD</a>
 						)}
+						<a href='/pricing' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_pricing', 'See pricing')}>SEE PRICING</a>
+						<a href='#demo' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_live_demo', 'Try the live AI')}>TRY THE LIVE AI →</a>
 					</div>
-				</section>
+				</div>
+				<div className='hero-scroll' aria-hidden='true'>
+					<span>SCROLL</span>
+					<div className='hero-scroll-line' />
+				</div>
+			</section>
+
+			{/* STATS BAR */}
+			<section className='proof-row' aria-label='FitnessAI proof points'>
+				{proofStats.map((proof) => (
+					<div className='proof-stat' key={proof.label}>
+						<strong>{proof.value}</strong>
+						<span>{proof.label}</span>
+						<p>{proof.desc}</p>
+					</div>
+				))}
+			</section>
+
+			{/* HOW IT WORKS */}
+			<section className='section' id='how-it-works'>
+				<div className='section-inner'>
+					<p className='section-tag'>THE PROCESS</p>
+					<h2 className='section-heading'>Three steps to a client-answering assistant</h2>
+					<div className='steps'>
+						{steps.map((s) => (
+							<div className='step' key={s.number}>
+								<span className='step-number'>{s.number}</span>
+								<h3>{s.title}</h3>
+								<p>{s.desc}</p>
+							</div>
+						))}
+					</div>
+				</div>
+			</section>
+
+			{/* FEATURES */}
+			<section className='section section-dark' id='features'>
+				<div className='section-inner'>
+					<p className='section-tag'>CAPABILITIES</p>
+					<h2 className='section-heading'>Built around the questions clients repeat</h2>
+					<div className='features'>
+						{features.map((f) => (
+							<div className='feature-card' key={f.title}>
+								<span className='feature-label'>{f.label}</span>
+								<h3>{f.title}</h3>
+								<p>{f.desc}</p>
+							</div>
+						))}
+					</div>
+				</div>
+			</section>
+
+			{/* LIVE DEMO */}
+			<section className='section' id='demo'>
+				<div className='section-inner'>
+					<p className='section-tag'>TRY IT NOW</p>
+					<h2 className='section-heading'>Try the AI before you build your assistant</h2>
+					<p className='demo-sub'>
+						Use the live demo to check how the AI handles fitness questions and source material before you create an account.
+					</p>
+					<div className='demo-frame-wrap'>
+						<iframe
+							title='Fitness AI Agents — live demo'
+							src='https://pymite6941-fitness-ai-agents-demo.hf.space'
+							className='demo-frame'
+							loading='lazy'
+							allow='clipboard-write'
+						/>
+					</div>
+					<a
+						className='hero-btn-ghost'
+						href='https://pymite6941-fitness-ai-agents-demo.hf.space'
+						target='_blank'
+						rel='noopener noreferrer'
+						onClick={() => trackCtaClick('demo_external', 'Open demo in new tab')}
+					>
+						OPEN DEMO IN NEW TAB ↗
+					</a>
+				</div>
+			</section>
+
+			{/* FAQ */}
+			<section className='section section-dark' id='faq'>
+				<div className='section-inner faq-layout'>
+					<div>
+						<p className='section-tag'>FAQ</p>
+						<h2 className='section-heading'>The setup questions buyers ask first</h2>
+					</div>
+					<div className='faq-list'>
+						{faqItems.map((item) => (
+							<article className='faq-item' key={item.question}>
+								<h3>{item.question}</h3>
+								<p>{item.answer}</p>
+							</article>
+						))}
+					</div>
+				</div>
+			</section>
+
+			{/* CTA */}
+			<section className='cta-section'>
+				<div className='cta-inner'>
+					<p className='section-tag'>GET STARTED</p>
+					<h2>Your clients already have questions.<br />Give them the first answer.</h2>
+					{!isSignedIn ? (
+						<SignUpButton mode="modal">
+							<button className='hero-btn' onClick={() => trackSignupStart('footer_create_account', 'Create free account')}>CREATE FREE ACCOUNT</button>
+						</SignUpButton>
+					) : (
+						<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('footer_dashboard', 'Go to dashboard')}>GO TO DASHBOARD</a>
+					)}
+				</div>
+			</section>
 			</main>
 
 			{/* FOOTER */}
@@ -196,10 +252,19 @@ export default function FitnessAI() {
 				</div>
 				<div className='footer-links'>
 					<div className='footer-group'>
-						<h3>Try it</h3>
+						<h3>Explore</h3>
+						<a href='/pricing'>Pricing</a>
+						<a href='/free'>Free tier</a>
+						<a href='/use-cases'>Use cases</a>
+						<a href='#features'>Features</a>
+						<a href='#faq'>FAQ</a>
 						<a href='/demo'>Sample Dashboard</a>
 						<a href='#demo'>Live AI Demo</a>
-						<a href='https://pymite6941-fitness-ai-agents-demo.hf.space' target='_blank' rel='noopener noreferrer'>Agent Demo (HuggingFace) ↗</a>
+					</div>
+					<div className='footer-group'>
+						<h3>Contact</h3>
+						<a href='https://github.com/PyMite6941/Fitness-AI-Agents' target='_blank' rel='noopener noreferrer'>GitHub repo</a>
+						<a href='#faq'>Setup questions</a>
 					</div>
 					<div className='footer-group'>
 						<h3>Apps</h3>
