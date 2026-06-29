@@ -121,7 +121,7 @@ export default function FitnessAI() {
 					<div className='hero-actions'>
 						{!isSignedIn ? (
 							<SignUpButton mode="modal" forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
-								<button className='hero-btn' onClick={() => trackSignupStart('hero_create_free_assistant', 'Create free assistant')}>CREATE FREE ASSISTANT</button>
+								<button className='hero-btn' onClick={() => trackSignupStart('homepage_hero_create_free_assistant', 'Create free assistant')}>CREATE FREE ASSISTANT</button>
 							</SignUpButton>
 						) : (
 							<a href='/dashboard' className='hero-btn' onClick={() => trackCtaClick('hero_dashboard', 'Open dashboard')}>OPEN DASHBOARD</a>
