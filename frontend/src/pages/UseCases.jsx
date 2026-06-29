@@ -92,7 +92,7 @@ export default function UseCases() {
 				<section className='eval-hero'>
 					<div>
 						<p className='eval-kicker'>Use cases</p>
-						<h1>Use FitnessAI when client questions repeat across messaging channels.</h1>
+						<h1>Personal trainers and gym owners use FitnessAI when client questions repeat.</h1>
 						<p className='eval-hero-copy'>
 							Personal trainers and gym owners can turn repeated workout, nutrition, setup, and timing questions into assistant replies shaped by their knowledge base and coaching persona.
 						</p>
