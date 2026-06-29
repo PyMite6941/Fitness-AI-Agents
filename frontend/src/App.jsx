@@ -65,7 +65,7 @@ export default function FitnessAI() {
 
 	useEffect(() => {
 		if (isLoaded && isSignedIn) navigate('/dashboard', { replace: true });
-	}, [isLoaded, isSignedIn]);
+	}, [isLoaded, isSignedIn, navigate]);
 
 	function trackCtaClick(ctaId, label) {
 		captureEvent('cta_clicked', {

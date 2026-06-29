@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@clerk/react';
 import { MapContainer, TileLayer, Polyline, Marker, useMapEvents } from 'react-leaflet';
@@ -92,14 +92,17 @@ export default function LogWorkout() {
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
 
-	const [mode, setMode]           = useState('manual');
+	const connected = searchParams.get('connected');
+	const connectionError = searchParams.get('error');
+
+	const [mode, setMode]           = useState(() => connected ? 'connect' : 'manual');
 	const [workoutType, setType]    = useState('Running');
 	const [datetime, setDatetime]   = useState(localNow);
 	const [fields, setFields]       = useState({});
 	const [notes, setNotes]         = useState('');
 	const [saving, setSaving]       = useState(false);
-	const [error, setError]         = useState('');
-	const [success, setSuccess]     = useState('');
+	const [error, setError]         = useState(() => connectionError ? `Connection failed: ${connectionError}` : '');
+	const [success, setSuccess]     = useState(() => connected ? `${connected.charAt(0).toUpperCase() + connected.slice(1)} connected!` : '');
 	const [integrations, setIntegrations] = useState({});
 	const [syncing, setSyncing]       = useState(null);
 	const [syncResult, setSyncResult] = useState(null);
@@ -113,37 +116,36 @@ export default function LogWorkout() {
 	// Route state
 	const [routeMode, setRouteMode] = useState('none');  // 'none' | 'draw' | 'gpx'
 	const [routePoints, setRoutePoints] = useState([]);
-	const [routeDist, setRouteDist] = useState(0);
+	const routeDist = useMemo(() => calcRouteDistance(routePoints), [routePoints]);
 
-	useEffect(() => {
-		loadIntegrations();
-		const connected = searchParams.get('connected');
-		const err = searchParams.get('error');
-		if (connected) {
-			setSuccess(`${connected.charAt(0).toUpperCase() + connected.slice(1)} connected!`);
-			setMode('connect');
-			loadIntegrations();
-		}
-		if (err) setError(`Connection failed: ${err}`);
-	}, []);
-
-	useEffect(() => {
-		setRouteDist(calcRouteDistance(routePoints));
-		// Auto-fill distance field from drawn/uploaded route
-		if (routePoints.length >= 2) {
-			const d = calcRouteDistance(routePoints);
-			setFields(prev => ({ ...prev, distance_meters: Math.round(d).toString() }));
-		}
-	}, [routePoints]);
-
-	async function loadIntegrations() {
+	const loadIntegrations = useCallback(async () => {
 		try {
 			const token = await getToken();
 			setIntegrations(await api.getIntegrationStatus(token));
 		} catch { /* non-critical */ }
-	}
+	}, [getToken]);
 
-	const addPoint = useCallback(pt => setRoutePoints(prev => [...prev, pt]), []);
+	useEffect(() => {
+		let active = true;
+		queueMicrotask(() => {
+			if (active) loadIntegrations();
+		});
+		return () => { active = false; };
+	}, [loadIntegrations]);
+
+	const syncDistanceField = useCallback((points) => {
+		if (points.length >= 2) {
+			setFields(prev => ({ ...prev, distance_meters: Math.round(calcRouteDistance(points)).toString() }));
+		}
+	}, []);
+
+	const addPoint = useCallback(pt => {
+		setRoutePoints(prev => {
+			const next = [...prev, pt];
+			syncDistanceField(next);
+			return next;
+		});
+	}, [syncDistanceField]);
 
 	function handleGPX(e) {
 		const file = e.target.files[0];
@@ -153,6 +155,7 @@ export default function LogWorkout() {
 			const pts = parseGPX(ev.target.result);
 			if (pts.length < 2) { setError('GPX file has fewer than 2 track points.'); return; }
 			setRoutePoints(pts);
+			syncDistanceField(pts);
 			// Set start time from first GPX point if available
 			if (pts[0].timestamp) setDatetime(pts[0].timestamp.slice(0, 16));
 			setError('');

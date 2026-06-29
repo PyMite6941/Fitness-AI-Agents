@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/react';
 import {
@@ -111,7 +111,6 @@ export default function Dashboard() {
 	const navigate = useNavigate();
 
 	const [tab, setTab]         = useState('Overview');
-	const [stats, setStats]     = useState(null);
 	const [charts, setCharts]   = useState(null);
 	const [summary, setSummary] = useState(null);
 	const [history, setHistory] = useState([]);
@@ -149,13 +148,11 @@ export default function Dashboard() {
 		}
 	}
 
-	useEffect(() => { load(); }, []);
-
-	async function load() {
+	const load = useCallback(async () => {
 		setLoading(true);
 		try {
 			const token = await getToken();
-			const [me, chartData, hist, sum, src, rdy, alr] = await Promise.all([
+			const [, chartData, hist, sum, src, rdy, alr] = await Promise.all([
 				api.getMe(token),
 				api.getCharts(token),
 				api.getHistory(token),
@@ -164,7 +161,6 @@ export default function Dashboard() {
 				api.getReadiness(token).catch(() => null),
 				api.getAlerts(token).catch(() => null),
 			]);
-			setStats(me);
 			setCharts(chartData);
 			setHistory(hist.analyses);
 			setSummary(sum);
@@ -176,7 +172,15 @@ export default function Dashboard() {
 		} finally {
 			setLoading(false);
 		}
-	}
+	}, [getToken]);
+
+	useEffect(() => {
+		let active = true;
+		queueMicrotask(() => {
+			if (active) load();
+		});
+		return () => { active = false; };
+	}, [load]);
 
 	async function runAnalysis() {
 		if (!context.trim()) return;
