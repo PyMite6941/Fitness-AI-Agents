@@ -33,7 +33,7 @@ const tiers = [
 			'Plan around WhatsApp, Telegram, and Messenger workflows',
 			'Keep pricing predictable while message volume grows',
 		],
-		cta: 'Start professional',
+		cta: 'Try free assistant first',
 		source: 'pricing_professional',
 		highlight: true,
 	},
