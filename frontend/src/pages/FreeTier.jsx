@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { SignUpButton, useAuth, UserButton } from '@clerk/react';
 import { captureEvent } from '../lib/analytics';
+import { SIGN_UP_COMPLETE_REDIRECT } from '../lib/authRedirects';
 import './EvaluationPages.css';
 
 const freePageDescription = 'Create a free FitnessAI assistant with starter credits, then follow the signup path to test one client-question workflow before paying.';
@@ -87,7 +88,7 @@ export default function FreeTier() {
 				{isSignedIn ? (
 					<UserButton />
 				) : (
-					<SignUpButton mode='modal'>
+					<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 						<button className='eval-nav-cta' onClick={() => trackFreeCta('free_nav_signup', 'Sign up')}>Sign up</button>
 					</SignUpButton>
 				)}
@@ -105,7 +106,7 @@ export default function FreeTier() {
 							{isSignedIn ? (
 								<a className='eval-primary' href='/dashboard' onClick={() => trackFreeCta('free_dashboard', 'Open dashboard')}>Open dashboard</a>
 							) : (
-								<SignUpButton mode='modal'>
+								<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 									<button className='eval-primary' onClick={() => trackFreeCta('free_signup_primary', 'Create free assistant')}>Create free assistant</button>
 								</SignUpButton>
 							)}
@@ -195,7 +196,7 @@ export default function FreeTier() {
 						{isSignedIn ? (
 							<a className='eval-primary' href='/dashboard' onClick={() => trackFreeCta('free_final_dashboard', 'Open dashboard')}>Open dashboard</a>
 						) : (
-							<SignUpButton mode='modal'>
+							<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 								<button className='eval-primary' onClick={() => trackFreeCta('free_final_signup', 'Create free assistant')}>Create free assistant</button>
 							</SignUpButton>
 						)}

@@ -16,7 +16,13 @@ import Devices from './pages/Devices.jsx'
 import Pricing from './pages/Pricing.jsx'
 import FreeTier from './pages/FreeTier.jsx'
 import UseCases from './pages/UseCases.jsx'
-import { captureEvent, identifyUser, initAnalytics } from './lib/analytics.js'
+import {
+  captureEvent,
+  captureSignupCompleteOnce,
+  identifyUser,
+  initAnalytics,
+} from './lib/analytics.js'
+import { SIGN_IN_REDIRECT, SIGN_OUT_REDIRECT, SIGN_UP_COMPLETE_REDIRECT } from './lib/authRedirects.js'
 
 function ProtectedRoute({ children }) {
   const { isSignedIn, isLoaded } = useAuth()
@@ -54,14 +60,17 @@ function AnalyticsTracker() {
   }, [isLoaded, isSignedIn, userId])
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || signupCompletionTracked.current) return
+    if (!isLoaded || !isSignedIn || !userId || signupCompletionTracked.current) return
 
     const params = new URLSearchParams(location.search)
-    if (params.get('signup') !== 'complete') return
+    const hasSignupCompleteParam = params.get('signup') === 'complete'
+
+    if (!hasSignupCompleteParam) return
 
     signupCompletionTracked.current = true
-    captureEvent('signup_completed', {
+    captureSignupCompleteOnce(userId, {
       route: location.pathname,
+      completion_source: 'signup_redirect',
     })
 
     params.delete('signup')
@@ -70,7 +79,7 @@ function AnalyticsTracker() {
       search: params.toString() ? `?${params.toString()}` : '',
       hash: location.hash,
     }, { replace: true })
-  }, [isLoaded, isSignedIn, location.hash, location.pathname, location.search, navigate])
+  }, [isLoaded, isSignedIn, userId, location.hash, location.pathname, location.search, navigate])
 
   return null
 }
@@ -79,7 +88,10 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ClerkProvider
       publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
-      afterSignOutUrl="/" afterSignInUrl="/dashboard" afterSignUpUrl="/dashboard?signup=complete"
+      afterSignOutUrl={SIGN_OUT_REDIRECT}
+      signInFallbackRedirectUrl={SIGN_IN_REDIRECT}
+      signUpFallbackRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}
+      signUpForceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}
     >
       <BrowserRouter>
         <AnalyticsTracker />

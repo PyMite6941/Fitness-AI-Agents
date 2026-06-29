@@ -1,6 +1,7 @@
 import { SignUpButton, useAuth, UserButton } from '@clerk/react';
 import { useNavigate } from 'react-router-dom';
 import { captureEvent } from '../lib/analytics';
+import { SIGN_UP_COMPLETE_REDIRECT } from '../lib/authRedirects';
 import './Pricing.css';
 
 const tiers = [
@@ -88,7 +89,7 @@ export default function Pricing() {
 				{isSignedIn ? (
 					<UserButton />
 				) : (
-					<SignUpButton mode='modal'>
+					<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 						<button className='pricing-nav-cta' onClick={() => trackPricingCta('pricing_nav_signup', 'Sign up')}>Sign up</button>
 					</SignUpButton>
 				)}
@@ -127,7 +128,7 @@ export default function Pricing() {
 							{isSignedIn ? (
 								<button className='pricing-card-cta' onClick={() => navigate('/dashboard')}>Open dashboard</button>
 							) : (
-								<SignUpButton mode='modal'>
+								<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 									<button className='pricing-card-cta' onClick={() => trackPricingCta(tier.source, tier.cta)}>{tier.cta}</button>
 								</SignUpButton>
 							)}
