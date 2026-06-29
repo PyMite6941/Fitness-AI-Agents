@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
 import { SignUpButton, useAuth, UserButton } from '@clerk/react';
 import { captureEvent } from '../lib/analytics';
 import './EvaluationPages.css';
+
+const freePageDescription = 'Create a free FitnessAI assistant with starter credits, then follow the signup path to test one client-question workflow before paying.';
 
 const includedItems = [
 	{
@@ -25,6 +28,35 @@ const freeLimits = [
 
 export default function FreeTier() {
 	const { isSignedIn } = useAuth();
+
+	useEffect(() => {
+		const previousTitle = document.title;
+		const existingDescription = document.querySelector('meta[name="description"]');
+		const descriptionMeta = existingDescription || document.createElement('meta');
+		const previousDescription = descriptionMeta.getAttribute('content');
+
+		if (!existingDescription) {
+			descriptionMeta.setAttribute('name', 'description');
+			document.head.append(descriptionMeta);
+		}
+
+		document.title = 'Free FitnessAI assistant with starter credits';
+		descriptionMeta.setAttribute('content', freePageDescription);
+
+		return () => {
+			document.title = previousTitle;
+
+			if (existingDescription) {
+				if (previousDescription === null) {
+					descriptionMeta.removeAttribute('content');
+				} else {
+					descriptionMeta.setAttribute('content', previousDescription);
+				}
+			} else {
+				descriptionMeta.remove();
+			}
+		};
+	}, []);
 
 	function trackFreeCta(source, label) {
 		captureEvent('cta_clicked', {
