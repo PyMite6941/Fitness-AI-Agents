@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
 import { captureEvent } from './lib/analytics';
+import { SIGN_UP_COMPLETE_REDIRECT } from './lib/authRedirects';
 
 const features = [
 	{
@@ -100,7 +101,7 @@ export default function FitnessAI() {
 					{!isSignedIn ? (
 						<>
 							<SignInButton mode="modal"><button className='nav-btn'>Log In</button></SignInButton>
-							<SignUpButton mode="modal"><button className='nav-btn nav-btn-primary' onClick={() => trackSignupStart('nav_signup', 'Sign Up')}>Sign Up</button></SignUpButton>
+							<SignUpButton mode="modal" forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}><button className='nav-btn nav-btn-primary' onClick={() => trackSignupStart('nav_signup', 'Sign Up')}>Sign Up</button></SignUpButton>
 						</>
 					) : (
 						<UserButton />
@@ -119,7 +120,7 @@ export default function FitnessAI() {
 					</p>
 					<div className='hero-actions'>
 						{!isSignedIn ? (
-							<SignUpButton mode="modal">
+							<SignUpButton mode="modal" forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 								<button className='hero-btn' onClick={() => trackSignupStart('hero_create_free_assistant', 'Create free assistant')}>CREATE FREE ASSISTANT</button>
 							</SignUpButton>
 						) : (
@@ -233,7 +234,7 @@ export default function FitnessAI() {
 					<p className='section-tag'>GET STARTED</p>
 					<h2>Your clients already have questions.<br />Give them the first answer.</h2>
 					{!isSignedIn ? (
-						<SignUpButton mode="modal">
+						<SignUpButton mode="modal" forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 							<button className='hero-btn' onClick={() => trackSignupStart('footer_create_account', 'Create free account')}>CREATE FREE ACCOUNT</button>
 						</SignUpButton>
 					) : (

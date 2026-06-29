@@ -1,5 +1,6 @@
 import { SignUpButton, useAuth, UserButton } from '@clerk/react';
 import { captureEvent } from '../lib/analytics';
+import { SIGN_UP_COMPLETE_REDIRECT } from '../lib/authRedirects';
 import './EvaluationPages.css';
 
 const workflows = [
@@ -82,7 +83,7 @@ export default function UseCases() {
 				{isSignedIn ? (
 					<UserButton />
 				) : (
-					<SignUpButton mode='modal'>
+					<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 						<button className='eval-nav-cta' onClick={() => trackUseCaseCta('use_cases_nav_signup', 'Sign up')}>Sign up</button>
 					</SignUpButton>
 				)}
@@ -100,7 +101,7 @@ export default function UseCases() {
 							{isSignedIn ? (
 								<a className='eval-primary' href='/dashboard' onClick={() => trackUseCaseCta('use_cases_dashboard', 'Open dashboard')}>Open dashboard</a>
 							) : (
-								<SignUpButton mode='modal'>
+								<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 									<button className='eval-primary' onClick={() => trackUseCaseCta('use_cases_signup_primary', 'Create free assistant')}>Create free assistant</button>
 								</SignUpButton>
 							)}
@@ -185,7 +186,7 @@ export default function UseCases() {
 						{isSignedIn ? (
 							<a className='eval-primary' href='/dashboard' onClick={() => trackUseCaseCta('use_cases_final_dashboard', 'Open dashboard')}>Open dashboard</a>
 						) : (
-							<SignUpButton mode='modal'>
+							<SignUpButton mode='modal' forceRedirectUrl={SIGN_UP_COMPLETE_REDIRECT}>
 								<button className='eval-primary' onClick={() => trackUseCaseCta('use_cases_final_signup', 'Create free assistant')}>Create free assistant</button>
 							</SignUpButton>
 						)}

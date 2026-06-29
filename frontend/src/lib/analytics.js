@@ -3,6 +3,7 @@ import posthog from 'posthog-js';
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || 'phc_D3wnwPRFrNCAYzopzCHAbgrhph7XqhiaMbEid2uwK6t4';
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
 const ACTIVATION_STORAGE_KEY = 'fitnessai:first_activation_captured';
+const SIGNUP_COMPLETE_STORAGE_PREFIX = 'fitnessai:signup_completed:';
 
 let initialized = false;
 
@@ -33,6 +34,24 @@ export function captureEvent(eventName, properties = {}) {
 		app: 'fitness_ai_agents',
 		...properties,
 	});
+}
+
+export function captureSignupCompleteOnce(userId, properties = {}) {
+	if (!userId) return false;
+
+	try {
+		const storageKey = `${SIGNUP_COMPLETE_STORAGE_PREFIX}${userId}`;
+		if (window.localStorage.getItem(storageKey)) return false;
+		window.localStorage.setItem(storageKey, new Date().toISOString());
+	} catch {
+		// Local storage can be unavailable in private browser contexts.
+	}
+
+	captureEvent('signup_completed', {
+		...properties,
+	});
+
+	return true;
 }
 
 export function captureActivationOnce(properties = {}) {
