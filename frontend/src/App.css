@@ -53,7 +53,7 @@ body {
 }
 
 .nav-links a {
-	color: rgba(255,255,255,0.6);
+	color: rgba(255,255,255,0.72);
 	text-decoration: none;
 	font-size: 12px;
 	font-weight: 600;
@@ -146,7 +146,7 @@ body {
 
 .hero-sub {
 	font-size: 18px;
-	color: rgba(255,255,255,0.74);
+	color: rgba(255,255,255,0.78);
 	max-width: 620px;
 	line-height: 1.7;
 	margin-bottom: 44px;
@@ -338,7 +338,7 @@ body {
 
 .step p {
 	font-size: 14px;
-	color: rgba(255,255,255,0.45);
+	color: rgba(255,255,255,0.72);
 	line-height: 1.7;
 }
 
@@ -386,7 +386,7 @@ body {
 
 .feature-card p {
 	font-size: 14px;
-	color: rgba(255,255,255,0.45);
+	color: rgba(255,255,255,0.72);
 	line-height: 1.7;
 }
 
@@ -460,7 +460,7 @@ body {
 
 .footer p {
 	font-size: 12px;
-	color: rgba(255,255,255,0.25);
+	color: rgba(255,255,255,0.68);
 	letter-spacing: 1px;
 }
 
@@ -535,14 +535,14 @@ body {
 .footer { flex-wrap: wrap; gap: 40px; align-items: flex-start; }
 .footer-links { display: flex; gap: 56px; flex-wrap: wrap; }
 .footer-group { display: flex; flex-direction: column; gap: 8px; }
-.footer-group h4 {
+.footer-group h3 {
 	font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
 	color: #ff3c00; margin-bottom: 4px;
 }
 .footer-group a {
-	color: rgba(255, 255, 255, 0.55); text-decoration: none; font-size: 0.9rem;
+	color: rgba(255, 255, 255, 0.72); text-decoration: none; font-size: 0.9rem;
 }
 .footer-group a:hover { color: #fff; }
 
-.footer-privacy { color: rgba(255,255,255,0.4); font-size: 0.82rem; text-decoration: none; }
+.footer-privacy { color: rgba(255,255,255,0.7); font-size: 0.82rem; text-decoration: none; }
 .footer-privacy:hover { color: #ff3c00; }

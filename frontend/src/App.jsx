@@ -85,7 +85,7 @@ export default function FitnessAI() {
 	return (
 		<div className='page'>
 
-			<nav className='nav'>
+			<nav className='nav' aria-label='Primary'>
 				<span className='nav-logo'>FitnessAI</span>
 				<div className='nav-links'>
 					<a href='#how-it-works'>How It Works</a>
@@ -108,6 +108,7 @@ export default function FitnessAI() {
 				</div>
 			</nav>
 
+			<main>
 			{/* HERO */}
 			<section className='hero'>
 				<div className='hero-overlay' />
@@ -128,7 +129,7 @@ export default function FitnessAI() {
 						<a href='#demo' className='hero-btn-ghost' onClick={() => trackCtaClick('hero_live_demo', 'Try the live AI')}>TRY THE LIVE AI →</a>
 					</div>
 				</div>
-				<div className='hero-scroll'>
+				<div className='hero-scroll' aria-hidden='true'>
 					<span>SCROLL</span>
 					<div className='hero-scroll-line' />
 				</div>
@@ -200,7 +201,7 @@ export default function FitnessAI() {
 						className='hero-btn-ghost'
 						href='https://pymite6941-fitness-ai-agents-demo.hf.space'
 						target='_blank'
-						rel='noreferrer'
+						rel='noopener noreferrer'
 						onClick={() => trackCtaClick('demo_external', 'Open demo in new tab')}
 					>
 						OPEN DEMO IN NEW TAB ↗
@@ -240,6 +241,7 @@ export default function FitnessAI() {
 					)}
 				</div>
 			</section>
+			</main>
 
 			{/* FOOTER */}
 			<footer className='footer'>
@@ -250,7 +252,7 @@ export default function FitnessAI() {
 				</div>
 				<div className='footer-links'>
 					<div className='footer-group'>
-						<h4>Explore</h4>
+						<h3>Explore</h3>
 						<a href='/pricing'>Pricing</a>
 						<a href='/free'>Free tier</a>
 						<a href='/use-cases'>Use cases</a>
@@ -260,12 +262,12 @@ export default function FitnessAI() {
 						<a href='#demo'>Live AI Demo</a>
 					</div>
 					<div className='footer-group'>
-						<h4>Contact</h4>
-						<a href='https://github.com/PyMite6941/Fitness-AI-Agents' target='_blank' rel='noreferrer'>GitHub repo</a>
+						<h3>Contact</h3>
+						<a href='https://github.com/PyMite6941/Fitness-AI-Agents' target='_blank' rel='noopener noreferrer'>GitHub repo</a>
 						<a href='#faq'>Setup questions</a>
 					</div>
 					<div className='footer-group'>
-						<h4>Apps</h4>
+						<h3>Apps</h3>
 						<a href='/app'>Android tracker</a>
 						<a href='/app'>iPhone (Add to Home Screen)</a>
 						<a href='/app'>Desktop app</a>
