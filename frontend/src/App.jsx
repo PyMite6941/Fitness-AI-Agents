@@ -248,7 +248,10 @@ export default function FitnessAI() {
 			<footer className='footer'>
 				<div className='footer-col'>
 					<span className='nav-logo'>FitnessAI</span>
-					<p>© 2026 FitnessAI. All rights reserved.</p>
+					<div className='footer-meta'>
+						<p>© 2026 FitnessAI. All rights reserved.</p>
+						<a href='https://tin.computer' className='footer-privacy'>Growth by Tin</a>
+					</div>
 					<a href='/privacy' className='footer-privacy'>Privacy &amp; your data</a>
 				</div>
 				<div className='footer-links'>
@@ -264,6 +267,8 @@ export default function FitnessAI() {
 					</div>
 					<div className='footer-group'>
 						<h3>Contact</h3>
+						<a href='mailto:fitness-ai-agents@mail.tin.computer'>fitness-ai-agents@mail.tin.computer</a>
+						<p>Setup and pricing questions are welcome.</p>
 						<a href='https://github.com/PyMite6941/Fitness-AI-Agents' target='_blank' rel='noopener noreferrer'>GitHub repo</a>
 						<a href='#faq'>Setup questions</a>
 					</div>
