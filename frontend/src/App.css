@@ -464,6 +464,13 @@ body {
 	letter-spacing: 1px;
 }
 
+.footer-meta {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1080px) {
 	.nav { padding: 16px 24px; }
@@ -543,6 +550,13 @@ body {
 	color: rgba(255, 255, 255, 0.72); text-decoration: none; font-size: 0.9rem;
 }
 .footer-group a:hover { color: #fff; }
+.footer-group p {
+	max-width: 220px;
+	font-size: 0.82rem;
+	line-height: 1.45;
+	letter-spacing: 0;
+	color: rgba(255, 255, 255, 0.6);
+}
 
 .footer-privacy { color: rgba(255,255,255,0.7); font-size: 0.82rem; text-decoration: none; }
 .footer-privacy:hover { color: #ff3c00; }
