@@ -27,6 +27,8 @@ const freeLimits = [
 	'Upgrade to Professional when reply volume needs a higher monthly allowance',
 ];
 
+const FREE_PAGE_SOURCE = '/free';
+
 export default function FreeTier() {
 	const { isSignedIn } = useAuth();
 
@@ -63,13 +65,16 @@ export default function FreeTier() {
 		captureEvent('cta_clicked', {
 			cta_id: source,
 			label,
-			route: '/free',
+			route: FREE_PAGE_SOURCE,
+			page_source: FREE_PAGE_SOURCE,
 		});
 
 		if (!isSignedIn && source.includes('signup')) {
 			captureEvent('signup_started', {
 				source,
-				route: '/free',
+				button_label: label,
+				route: FREE_PAGE_SOURCE,
+				page_source: FREE_PAGE_SOURCE,
 			});
 		}
 	}

@@ -56,6 +56,8 @@ const evaluationLinks = [
 	},
 ];
 
+const PRICING_PAGE_SOURCE = '/pricing';
+
 export default function Pricing() {
 	const { isSignedIn } = useAuth();
 	const navigate = useNavigate();
@@ -64,13 +66,16 @@ export default function Pricing() {
 		captureEvent('cta_clicked', {
 			cta_id: source,
 			label,
-			route: '/pricing',
+			route: PRICING_PAGE_SOURCE,
+			page_source: PRICING_PAGE_SOURCE,
 		});
 
 		if (!isSignedIn) {
 			captureEvent('signup_started', {
 				source,
-				route: '/pricing',
+				button_label: label,
+				route: PRICING_PAGE_SOURCE,
+				page_source: PRICING_PAGE_SOURCE,
 			});
 		}
 	}
