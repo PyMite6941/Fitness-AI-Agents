@@ -14,6 +14,7 @@ import Devices from './pages/Devices.jsx'
 import Pricing from './pages/Pricing.jsx'
 import FreeTier from './pages/FreeTier.jsx'
 import UseCases from './pages/UseCases.jsx'
+import SoloTrainerSearch from './pages/SoloTrainerSearch.jsx'
 import {
   captureEvent,
   captureSignupCompleteOnce,
@@ -93,6 +94,7 @@ export default function AppRoutes() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/free" element={<FreeTier />} />
         <Route path="/use-cases" element={<UseCases />} />
+        <Route path="/personal-trainer-client-question-assistant" element={<SoloTrainerSearch />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
         <Route path="/log" element={<ProtectedRoute><LogWorkout /></ProtectedRoute>} />
