@@ -38,8 +38,10 @@ jobs:
 
       - name: Compile (export flashable binaries)
         run: |
+          # CDCOnBoot=cdc routes the app's Serial over the native USB so a single
+          # USB cable gives both flashing and serial debug output.
           arduino-cli compile \
-            --fqbn esp32:esp32:esp32c3 \
+            --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
             --export-binaries \
             --warnings all \
             watch/firmware/fitness_watch
@@ -47,7 +49,8 @@ jobs:
       - name: Collect binaries
         run: |
           mkdir -p out
-          cp watch/firmware/fitness_watch/build/esp32.esp32.esp32c3/*.bin out/
+          # the build subdir name encodes the FQBN + options, so glob it
+          cp watch/firmware/fitness_watch/build/*/*.bin out/
           echo "--- flashable binaries ---"
           ls -la out
 
