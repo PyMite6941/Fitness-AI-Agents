@@ -16,6 +16,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sketch:
+          - fitness_watch   # the product firmware
+          - watch_diag      # hardware component diagnostic
     steps:
       - uses: actions/checkout@v4
 
@@ -44,19 +50,19 @@ jobs:
             --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
             --export-binaries \
             --warnings all \
-            watch/firmware/fitness_watch
+            watch/firmware/${{ matrix.sketch }}
 
       - name: Collect binaries
         run: |
           mkdir -p out
           # the build subdir name encodes the FQBN + options, so glob it
-          cp watch/firmware/fitness_watch/build/*/*.bin out/
-          echo "--- flashable binaries ---"
+          cp watch/firmware/${{ matrix.sketch }}/build/*/*.bin out/
+          echo "--- flashable binaries (${{ matrix.sketch }}) ---"
           ls -la out
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fitness-watch-firmware-esp32c3
+          name: fitness-watch-${{ matrix.sketch }}-esp32c3
           path: out/**
           if-no-files-found: error
