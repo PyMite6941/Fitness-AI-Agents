@@ -1,0 +1,59 @@
+name: Build Watch Firmware
+
+# Free cloud build for the FitnessAI Watch (ESP32-C3) firmware.
+# Compiles in the cloud (no local toolchain needed) and uploads the flashable
+# binaries as an artifact. Download them from the run's "Artifacts" section and
+# flash with esptool / arduino-cli upload. Run from the Actions tab, or it runs
+# automatically when the firmware changes.
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'watch/firmware/**'
+      - '.github/workflows/watch-firmware.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 core + libraries
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls \
+            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.10   # pinned to match the local flash toolchain
+          arduino-cli lib install \
+            "U8g2" \
+            "SparkFun MAX3010x Pulse and Proximity Sensor Library" \
+            "Adafruit MPU6050" \
+            "Adafruit Unified Sensor" \
+            "Adafruit BusIO"
+
+      - name: Compile (export flashable binaries)
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32c3 \
+            --export-binaries \
+            --warnings all \
+            watch/firmware/fitness_watch
+
+      - name: Collect binaries
+        run: |
+          mkdir -p out
+          cp watch/firmware/fitness_watch/build/esp32.esp32.esp32c3/*.bin out/
+          echo "--- flashable binaries ---"
+          ls -la out
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-watch-firmware-esp32c3
+          path: out/**
+          if-no-files-found: error
