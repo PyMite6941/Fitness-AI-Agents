@@ -69,10 +69,8 @@ def _compute(rows):
     }
 
 
-@router.get("/readiness")
-async def readiness(user_id: str = Depends(get_user_id)):
-    db = await get_db()
-    m = _compute(await _recent(db, user_id))
+def _readiness_from_metrics(m):
+    """Pure Readiness computation from a metrics dict — shared by the route and cron."""
     parts, weights = [], []
 
     # HRV: recent vs baseline (higher better)
@@ -101,11 +99,8 @@ async def readiness(user_id: str = Depends(get_user_id)):
     return {"available": True, "score": score, "band": band, "advice": advice, "metrics": m}
 
 
-@router.get("/alerts")
-async def alerts(user_id: str = Depends(get_user_id)):
-    db = await get_db()
-    rows = await _recent(db, user_id)
-    m = _compute(rows)
+def _alerts_from_metrics(m):
+    """Pure Watchdog alerts from a metrics dict — shared by the route and cron."""
     out = []
 
     if m["rhr_base"] and m["rhr_recent"] and m["rhr_recent"] - m["rhr_base"] >= 5:
@@ -123,3 +118,50 @@ async def alerts(user_id: str = Depends(get_user_id)):
     if not out:
         out.append({"level": "ok", "title": "All clear", "detail": "No red flags in your recent data — nicely balanced."})
     return {"alerts": out, "metrics": m}
+
+
+# ── Cron-facing helpers (compute straight from the DB, no HTTP request) ───────
+async def readiness_for(db, user_id: str) -> dict:
+    return _readiness_from_metrics(_compute(await _recent(db, user_id)))
+
+
+async def alerts_for(db, user_id: str) -> dict:
+    return _alerts_from_metrics(_compute(await _recent(db, user_id)))
+
+
+def build_daily_notification(readiness: dict, alerts: dict) -> dict | None:
+    """Turn a user's readiness + alerts into one push payload, or None to skip.
+
+    Skips users with no usable data yet (nothing worth pinging about).
+    """
+    r = readiness or {}
+    active = [a for a in (alerts or {}).get("alerts", []) if a.get("level") != "ok"]
+    if not r.get("available") and not active:
+        return None
+
+    emoji = {"green": "🟢", "amber": "🟡", "red": "🔴"}.get(r.get("band"), "")
+    if r.get("available"):
+        title = f"{emoji} Readiness {r['score']}/100"
+        body = r.get("advice", "")
+    else:
+        title = "FitnessAI — daily check"
+        body = ""
+    if active:
+        top = active[0]
+        body = (body + "  •  " if body else "") + f"⚠ {top['title']}"
+        if len(active) > 1:
+            body += f" (+{len(active) - 1} more)"
+    return {"title": title, "body": body.strip(), "url": "/coach"}
+
+
+# ── Routes (thin wrappers over the pure helpers) ─────────────────────────────
+@router.get("/readiness")
+async def readiness(user_id: str = Depends(get_user_id)):
+    db = await get_db()
+    return await readiness_for(db, user_id)
+
+
+@router.get("/alerts")
+async def alerts(user_id: str = Depends(get_user_id)):
+    db = await get_db()
+    return await alerts_for(db, user_id)

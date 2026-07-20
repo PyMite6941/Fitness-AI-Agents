@@ -1,0 +1,39 @@
+name: Daily Insights Push
+
+# Fires the backend's daily Readiness/Watchdog push once a day. Free scheduler:
+# GitHub Actions cron hits POST /cron/daily-insights with the shared secret, so
+# no extra infra (or Vercel Cron config) is needed.
+#
+# Required repo secrets:
+#   CRON_SECRET  — must match CRON_SECRET on the Vercel backend project
+#   BACKEND_URL  — optional; defaults to the known prod backend if unset
+#
+# Adjust the schedule to your users' morning. 13:00 UTC = 20:00 Bangkok / 08:00 ET.
+
+on:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily insights notifications
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repo secret is not set — cannot trigger."
+            exit 1
+          fi
+          BASE="${BACKEND_URL:-https://backend-seven-topaz-23.vercel.app}"
+          echo "POST $BASE/cron/daily-insights"
+          code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST "$BASE/cron/daily-insights" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat /tmp/resp.json || true
+          echo
+          test "$code" = "200"

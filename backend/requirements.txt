@@ -10,3 +10,4 @@ httpx==0.28.1
 PyJWT==2.12.1
 supabase==2.30.1
 fitdecode==0.10.0   # parse .fit files (Garmin/Wahoo/Coros/Suunto/Zwift) — pure-python, light
+pywebpush==1.14.1   # VAPID web push for daily insight notifications (py-vapid + http-ece + cryptography — light, no AI stack)
