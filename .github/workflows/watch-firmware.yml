@@ -1,0 +1,68 @@
+name: Build Watch Firmware
+
+# Free cloud build for the FitnessAI Watch (ESP32-C3) firmware.
+# Compiles in the cloud (no local toolchain needed) and uploads the flashable
+# binaries as an artifact. Download them from the run's "Artifacts" section and
+# flash with esptool / arduino-cli upload. Run from the Actions tab, or it runs
+# automatically when the firmware changes.
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'watch/firmware/**'
+      - '.github/workflows/watch-firmware.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sketch:
+          - fitness_watch   # the product firmware
+          - watch_diag      # hardware component diagnostic
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 core + libraries
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls \
+            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.10   # pinned to match the local flash toolchain
+          arduino-cli lib install \
+            "U8g2" \
+            "SparkFun MAX3010x Pulse and Proximity Sensor Library" \
+            "Adafruit MPU6050" \
+            "Adafruit Unified Sensor" \
+            "Adafruit BusIO"
+
+      - name: Compile (export flashable binaries)
+        run: |
+          # CDCOnBoot=cdc routes the app's Serial over the native USB so a single
+          # USB cable gives both flashing and serial debug output.
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc \
+            --export-binaries \
+            --warnings all \
+            watch/firmware/${{ matrix.sketch }}
+
+      - name: Collect binaries
+        run: |
+          mkdir -p out
+          # the build subdir name encodes the FQBN + options, so glob it
+          cp watch/firmware/${{ matrix.sketch }}/build/*/*.bin out/
+          echo "--- flashable binaries (${{ matrix.sketch }}) ---"
+          ls -la out
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-watch-${{ matrix.sketch }}-esp32c3
+          path: out/**
+          if-no-files-found: error
