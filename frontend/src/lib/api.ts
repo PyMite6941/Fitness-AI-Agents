@@ -98,6 +98,15 @@ export const api = {
 	getReadiness: (token: string) => request('/insights/readiness', token),
 	getAlerts: (token: string) => request('/insights/alerts', token),
 
+	// Web push (daily insight notifications)
+	getVapidKey: (token: string) => request('/push/vapid-public-key', token),
+	getPushStatus: (token: string) => request('/push/status', token),
+	subscribePush: (token: string, subscription: object) =>
+		request('/push/subscribe', token, { method: 'POST', body: JSON.stringify({ subscription }) }),
+	unsubscribePush: (token: string, endpoint: string) =>
+		request('/push/unsubscribe', token, { method: 'POST', body: JSON.stringify({ endpoint }) }),
+	testPush: (token: string) => request('/push/test', token, { method: 'POST' }),
+
 	// Chat with your data
 	chat: (token: string, messages: object[]) =>
 		request('/chat/', token, { method: 'POST', body: JSON.stringify({ messages }) }),

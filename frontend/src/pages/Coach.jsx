@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/react';
 import { api } from '../lib/api';
+import NotifyToggle from '../components/NotifyToggle';
 import './Coach.css';
 
 const BAND = { green: '#22c55e', amber: '#f59e0b', red: '#ef4444' };
@@ -80,6 +81,7 @@ export default function Coach() {
 				<button className='coach-back' onClick={() => navigate('/dashboard')}>← Dashboard</button>
 				<span className='coach-logo'>AI Coach</span>
 				<div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+					<NotifyToggle />
 					<button className='coach-link' onClick={() => navigate('/chat')}>💬 Chat</button>
 					<UserButton />
 				</div>

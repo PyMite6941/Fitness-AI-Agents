@@ -164,6 +164,20 @@ CREATE TABLE coach_plans (
 );
 CREATE INDEX idx_coach_plans_user ON coach_plans (user_id, status);
 
+-- ── Web-push subscriptions (PWA daily insight notifications) ─────────────────
+-- One row per browser/device that opted into push. `endpoint` is globally unique
+-- so re-subscribing the same browser upserts. Only the service_role backend
+-- reads these (to send the daily Readiness/Watchdog push).
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id           BIGSERIAL   PRIMARY KEY,
+    user_id      TEXT        NOT NULL,          -- Clerk sub the subscription belongs to
+    endpoint     TEXT        UNIQUE NOT NULL,   -- push service endpoint (unique per browser)
+    subscription JSONB       NOT NULL,          -- full PushSubscription.toJSON()
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions (user_id);
+
 -- ── Security: enable Row Level Security on every table ───────────────────────
 -- With RLS ON and NO policies, the anon/public key is denied all access; the
 -- backend uses the service_role key, which bypasses RLS. (Applied live; here for
@@ -174,6 +188,7 @@ ALTER TABLE routes             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_integrations  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE device_tokens      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coach_plans        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- ── Per-user AI rate limiting ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS ai_usage (
