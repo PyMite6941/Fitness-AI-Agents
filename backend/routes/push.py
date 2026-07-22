@@ -6,6 +6,7 @@ reads these to deliver Readiness/Watchdog notifications. Subscriptions are prune
 automatically when the push service reports them gone (410).
 """
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -15,6 +16,30 @@ from db import get_db
 from push_utils import VAPID_PUBLIC_KEY, push_configured, send_web_push
 
 router = APIRouter()
+
+# Only accept subscription endpoints on real web-push service hosts. Without this
+# a signed-in user could store an arbitrary endpoint and the daily job would POST
+# to it — a (blind) SSRF vector. The daily cron trusts what's stored, so validate
+# here at write time.
+_ALLOWED_PUSH_HOSTS_EXACT = {"fcm.googleapis.com"}          # Chrome / Android (FCM)
+_ALLOWED_PUSH_SUFFIXES = (
+    ".push.apple.com",              # Safari / iOS
+    ".push.services.mozilla.com",   # Firefox
+    ".notify.windows.com",          # Edge / WNS
+)
+
+
+def _endpoint_allowed(endpoint: str) -> bool:
+    try:
+        u = urlparse(endpoint)
+    except Exception:
+        return False
+    host = (u.hostname or "").lower()
+    if u.scheme != "https" or not host:
+        return False
+    if host in _ALLOWED_PUSH_HOSTS_EXACT:
+        return True
+    return any(host.endswith(s) for s in _ALLOWED_PUSH_SUFFIXES)
 
 
 class SubscribeBody(BaseModel):
@@ -36,6 +61,8 @@ async def subscribe(body: SubscribeBody, user_id: str = Depends(get_user_id)):
     endpoint = (body.subscription or {}).get("endpoint")
     if not endpoint:
         raise HTTPException(status_code=400, detail="subscription.endpoint is required")
+    if not _endpoint_allowed(endpoint):
+        raise HTTPException(status_code=400, detail="Unsupported push endpoint host.")
     db = await get_db()
     # endpoint is unique — upsert so re-subscribing the same browser is idempotent.
     await db.table("push_subscriptions").upsert({
