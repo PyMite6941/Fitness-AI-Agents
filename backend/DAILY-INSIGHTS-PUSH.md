@@ -56,6 +56,11 @@ Then redeploy the backend (`cd backend && vercel --prod`). The light
    It should return `{"ok": true, "notifications_sent": N, ...}`.
 
 ## Notes
+- **Security:** `/cron/daily-insights` is guarded by `CRON_SECRET` (fail‑closed: 503 if
+  unset, 401 if wrong). `/push/*` are Clerk‑authed. `push_subscriptions` has RLS on
+  (service role only). `/push/subscribe` allowlists the endpoint host (only
+  `fcm.googleapis.com`, `*.push.apple.com`, `*.push.services.mozilla.com`,
+  `*.notify.windows.com`) so a forged endpoint can't turn the daily job into an SSRF.
 - Push degrades gracefully: with no VAPID keys the endpoints return `configured:false`
   and the `NotifyToggle` hides itself, so nothing breaks pre‑config.
 - iOS requires the PWA be **installed to the Home Screen** before web push works
