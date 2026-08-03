@@ -243,7 +243,8 @@
 }
 
 .eval-card ul,
-.eval-checklist ul {
+.eval-checklist ul,
+.eval-inline-list {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
@@ -254,7 +255,8 @@
 }
 
 .eval-card li::marker,
-.eval-checklist li::marker {
+.eval-checklist li::marker,
+.eval-inline-list li::marker {
 	color: #ff3c00;
 }
 
