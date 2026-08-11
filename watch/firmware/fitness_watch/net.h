@@ -46,6 +46,7 @@ void wifiSetup(const char *ssid, const char *pass); // WiFi.begin + autoreconnec
 bool wifiConnected();
 void wifiTick();                                   // throttled background re-AT
 const char *wifiIp();                             // "A.B.C.D" or "-"
+void wifiOff();                                    // radio down (critical-battery load shed)
 
 // ── Pairing portal ───────────────────────────────────────────────────────────
 void pairingBegin();                              // boot SoftAP + DNS + HTTP setup page

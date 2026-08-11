@@ -39,6 +39,35 @@ watch-archive/
 # Archived old FormCoach server
 server-archive/
 
+# Watch hardware docs. The blanket `*.md` rule at the top of this file is meant
+# for scratch notes, but it also silently swallowed these — POWER.md was written,
+# committed nothing, and simply vanished from `git status`. These are real
+# documentation and belong in the repo.
+!watch/POWER.md
+!watch/sim/*.md
+
+# KiCad local state and generated reports. The project, the generator and the
+# export/ deliverables ARE tracked; these are per-machine or regenerable.
+watch/hardware/*.kicad_prl
+watch/hardware/*-backups/
+watch/hardware/fp-info-cache
+watch/hardware/erc.rpt
+watch/hardware/*.kicad_sch-bak
+
+# arduino-cli drops a 40+ MB build tree next to the sketch when compiled without
+# --output-dir (e.g. from the Arduino IDE).
+watch/firmware/*/build/
+
+# Watch simulator: build output and locally installed tooling, not sources.
+watch/sim/build/
+watch/sim/build-hw/
+watch/sim/.wokwi-tools/
+# Screenshots produced by `take-screenshot` steps. Regenerated every run — but
+# if you ever adopt a golden image for `compare-with`, name it *.golden.png so
+# it survives this rule.
+watch/sim/scenarios/shots/*.png
+!watch/sim/scenarios/shots/*.golden.png
+
 # Gradio Space vendors backend/bots.py via prepare_space.py — a generated copy.
 # Ignored HERE (repo root) so it stays out of the main repo, but NOT in
 # huggingface_space/.gitignore, so the HF uploader still ships it to the Space.

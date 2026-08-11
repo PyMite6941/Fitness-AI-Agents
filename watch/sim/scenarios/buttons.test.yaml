@@ -1,0 +1,70 @@
+name: buttons
+version: 1
+author: FitnessAI Watch
+
+# Exercises the full button state machine through the emulated GPIOs: debounce,
+# tap-on-release, hold, and the double-tap display mute.
+#
+# Screen enum (config.h): 0=BOOT 1=HOME 2=HR 3=STEPS 4=STATUS 5=SYNC 6=PAIR
+# Nav order is {HOME, HR, STEPS, SYNC, STATUS} and a tap on A steps BACKWARDS
+# through it, so HOME -> STATUS -> SYNC.
+#
+# Timings that matter (config.h / the sketch): debounce 50 ms, hold 600 ms,
+# double-tap window 400 ms. Presses below are 150 ms: safely past debounce,
+# safely short of a hold.
+steps:
+  - wait-serial: 'Boot complete'
+  - write-serial: "screen\n"
+  - wait-serial: '[sim] screen=1'
+
+  # ── Tap A: HOME -> STATUS ─────────────────────────────────────────────────
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 150ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 300ms
+  - write-serial: "screen\n"
+  - wait-serial: '[sim] screen=4'
+
+  # ── Tap A again: STATUS -> SYNC ───────────────────────────────────────────
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 150ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 300ms
+  - write-serial: "screen\n"
+  - wait-serial: '[sim] screen=5'
+
+  # ── Hold A: straight back to HOME ─────────────────────────────────────────
+  # Regression: the tap used to fire on PRESS, so a hold advanced one screen and
+  # THEN went home. Tap now fires on release and `held` suppresses it. If that
+  # regressed, the screen after this is 4, not 1.
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 900ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 300ms
+  - write-serial: "screen\n"
+  - wait-serial: '[sim] screen=1'
+
+  # ── Double-tap B: display mute on ─────────────────────────────────────────
+  # Two releases 250 ms apart, inside the 400 ms window.
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 120ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 130ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 120ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - wait-serial: 'SCREEN OFF'
+
+  # ── Double-tap B again: display back on ───────────────────────────────────
+  # NOTE: while muted the main loop returns before handleSerialCmd(), so the
+  # serial console is intentionally dead here — only buttons can wake it. That
+  # is why this step asserts on the log line rather than querying `screen`.
+  - delay: 600ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 120ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 130ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 120ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - wait-serial: 'SCREEN ON'

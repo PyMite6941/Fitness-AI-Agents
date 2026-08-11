@@ -38,6 +38,21 @@
 // NONAME. The earlier "blank" NONAME run was the 400 kHz I2C bug, not this.
 #define OLED_INIT_ALT0  0   // 0 = NONAME (measured correct), 1 = ALT0
 
+// How often to force a full re-init + repaint of the SSD1306. A WiFi radio burst
+// landing mid-frame-write (or a marginal bus) can desync the panel's internal
+// address counter once in a while; the SSD1306 has no read-back, so the only way
+// to recover is to re-send the init sequence. Too slow (= the old hard-coded
+// 30 s) means a corrupted frame stays on screen a long time; too fast = a brief
+// clear-flash every interval. 5000 ms is a good stopgap.
+#define DISPLAY_SELF_HEAL_MS    5000
+
+// DIAGNOSTIC — 1 = run with the RADIO COMPLETELY OFF (no BLE, no WiFi AP/portal,
+// no NTP) and force the home screen. Use to isolate the display "tweaking":
+// still corrupt with this on = electrical/bus/drawing issue; clean = the radio
+// preempting the ~82 ms frame write is the corruption source. Set back to 0 for
+// normal operation.
+#define DISPLAY_RADIO_TEST      0
+
 // ── Heart rate / SpO2 (MAX30105, SparkFun MAX3010x library) ──────────────────
 // INT pin is unwired (polling only) — leave at -1.
 #define MAX30105_ADDR   0x57
@@ -49,11 +64,66 @@
 #define MPU6050_ADDR    0x68
 #define PIN_MPU6050_INT (-1)
 
-// ── Buttons (tactile, active-low with internal pull-up) ─────────────────────
-// Button A = Back / previous screen. Button B = Select / next screen.
-// Both are non-strapping GPIOs, so holding them at reset is safe.
+// ── Buttons (tactile) ────────────────────────────────────────────────────────
+// Button A = Back / previous screen (hold = home). Button B = single-press home /
+// double-press display mute (vitals keep running). Both are non-strapping GPIOs,
+// so holding them at reset is safe.
 #define PIN_BTN_A       4
 #define PIN_BTN_B       5
+
+// Legacy B hold-to-standby window — no longer used by the sketch (the double
+// tap replaced it). Kept only for reference / config-hygiene checks.
+#define BTN_STANDBY_HOLD_MS  1500
+
+// Double-tap window for button B (GPIO5): two presses inside this time = the
+// display-only screen-off toggle. Vitals (HR sampling, steps, BLE/WiFi) keep
+// running — this is display mute, not sleep. Same double press wakes it back.
+#define BTN_DOUBLE_TAP_MS    400
+
+// Wiring polarity. The firmware reads "pressed" on either edge — pick the one
+// that matches how the buttons are physically wired:
+//   BTN_ACTIVE_HIGH  0 = button throws the pin LOW (GPIO→button→GND rail; the
+//                        classic INPUT_PULLUP build). This is the README default.
+//   BTN_ACTIVE_HIGH  1 = button throws the pin HIGH (GPIO→330R→button→3.3V rail);
+//                        the pin then uses INPUT_PULLDOWN so it sits LOW until
+//                        the button is pressed.
+#define BTN_ACTIVE_HIGH  1
+
+// ── Standby / display-off (battery saving) ───────────────────────────────────
+// Hold button B (GPIO5) for BTN_HOLD_MS to put the watch to sleep: the OLED is
+// powered down, the sensors stop being polled, and the CPU enters light sleep.
+// A quick press of button B wakes it back up.
+
+// Button B is the perf/confirm button. In the default layout that is GPIO 5.
+#define PIN_SLEEP_BTN   PIN_BTN_B
+
+// ── Battery monitor (M7) ─────────────────────────────────────────────────────
+// Wiring:  BAT+ ──[100k]──┬──> PIN_BATT_ADC        (+ 100nF from that pin to GND)
+//                         └──[100k]── GND
+// The divider halves the cell so a full 4.2 V lands at 2.1 V, inside ADC1's
+// 11 dB range. 2x100k draws only 21 uA, so it can stay connected permanently.
+// MUST be an ADC1 pin (GPIO 0-4) — ADC2 stops working the moment WiFi is on.
+// DEFAULTS TO -1 (disabled) because the divider is not built yet — an unwired
+// ADC pin floats and would report a random percentage. Change this to 3 the
+// moment the two 100k resistors are soldered on. See POWER.md.
+#define PIN_BATT_ADC        (-1)
+#define BATT_DIVIDER_RATIO  2.0f    // (R_top + R_bot) / R_bot  -> 100k/100k = 2.0
+#define BATT_CAL_SCALE      1.00f   // trim: measured_by_multimeter / reported_by_watch
+
+// Optional TRUE USB detection: a second divider off the board's 5V pin.
+//   5V ──[100k]──┬──> PIN_USB_SENSE      └──[100k]── GND     (5.0 V -> 2.5 V)
+// Without it the firmware guesses from cell voltage alone, which cannot tell a
+// just-charged cell from an actively powered one. -1 = not wired.
+#define PIN_USB_SENSE       (-1)    // GPIO 0 or 1 are free ADC1 pins if you add it
+#define USB_DIVIDER_RATIO   2.0f
+#define USB_PRESENT_MV      4000    // 5V rail this high = USB really is plugged in
+
+#define BATT_SAMPLES        16      // ADC reads averaged per measurement (C3 ADC is noisy)
+#define BATT_INTERVAL_MS    10000   // re-measure this often
+#define BATT_FULL_MV        4200    // a Li-ion cell at 100%
+#define BATT_LOW_MV         3500    // show "LOW" below this
+#define BATT_CRIT_MV        3400    // below this, shed load (radio off) to protect the cell
+#define BATT_USB_MV         4250    // fallback USB guess: a resting cell can't exceed 4.2 V
 
 // ── UI timing ────────────────────────────────────────────────────────────────
 #define BOOT_BAR_MS     2000            // how long the loading bar takes to fill
@@ -123,6 +193,46 @@
 #define NVS_KEY_PASS        "pass"
 #define NVS_KEY_TOKEN       "token"
 #define NVS_KEY_NAME        "devname"
+
+// ── Simulator build (Wokwi) ──────────────────────────────────────────────────
+// Activated ONLY by -DSIM_BUILD=1 on the compiler command line, which is what
+// watch/sim/simctl.py passes. A normal `arduino-cli compile` or an Arduino IDE
+// build never defines it, so the hardware firmware is completely unaffected by
+// everything below. See watch/sim/README.md.
+//
+// Three things differ in the simulator, and each is a limit of the emulator,
+// not a choice:
+//   1. BLE off      — Wokwi does not emulate the Bluetooth controller at all.
+//                     bleStart() would block forever on a stack that never
+//                     comes up. WiFi *is* emulated, so only BLE is dropped.
+//   2. Battery ADC  — pointed at GPIO3, where diagram.json puts a slide pot.
+//                     This is the one place the sim is AHEAD of the hardware:
+//                     it exercises the M7 power code before the divider exists.
+//   3. HR synthetic — no MAX30105 part exists in Wokwi. See sim.h.
+#ifndef SIM_BUILD
+#define SIM_BUILD 0
+#endif
+
+#if SIM_BUILD
+  #undef  BLE_ENABLE
+  #define BLE_ENABLE          0
+
+  #undef  PIN_BATT_ADC
+  #define PIN_BATT_ADC        3       // slide potentiometer stands in for the divider
+
+  // The pot spans the full 0-3.3 V rail, and BATT_DIVIDER_RATIO doubles it, so
+  // the firmware sees a 0-6.6 V "cell". Handy for testing: sliding down walks
+  // the UI through 100% -> LOW -> critical-radio-shed without a bench supply.
+
+  // Optional: let the simulated watch join Wokwi's virtual network. Off by
+  // default so a sim run is deterministic and offline. Turn on to exercise
+  // wifiTick()/syncTick() against the real backend from inside the simulator.
+  #ifndef SIM_WIFI
+  #define SIM_WIFI            0
+  #endif
+  #define SIM_WIFI_SSID       "Wokwi-GUEST"   // Wokwi's open virtual AP
+  #define SIM_WIFI_PASS       ""
+#endif
 
 // ── Shared types ─────────────────────────────────────────────────────────────
 // These live here, not in the .ino, because the Arduino builder auto-generates

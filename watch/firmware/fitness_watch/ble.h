@@ -19,3 +19,5 @@ void bleStart();      // init stack + advertise (call once in setup)
 void bleTick();       // push STATE notifications (call every main loop)
 bool bleActive();     // stack is up
 void bleNotifyState();// immediately push the current STATE to a connected peer
+void bleSleep();      // drop advertising + power the BT controller off (standby)
+void bleWake();       // power the controller back on + re-advertise (out of standby)

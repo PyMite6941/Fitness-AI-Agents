@@ -49,7 +49,7 @@ watch-archive/
 | **SSD1306 128×64 OLED** | display | I2C (shared) | `0x3C` |
 | **MPU6050** | accel/gyro → steps | I2C (shared) | `0x68` |
 | **MAX30102** | heart rate / SpO₂ | I2C (shared) | `0x57` |
-| 2 × tactile buttons | navigation | GPIO (active-low) | — |
+| 2 × tactile buttons | navigation | GPIO (active-high) | — |
 | **NEO-6M GPS** *(optional)* | route tracking | UART1 | — |
 | Battery + divider *(optional)* | charge level | ADC1 | — |
 
@@ -65,8 +65,8 @@ All three I2C devices share **one two-wire bus** — critical on the pin-starved
 | I2C **SDA** | 7 | Non-strapping; moved off the old GPIO 9 so only one strapping pin (8) is used for I2C. Shared bus, same as SCL. |
 | MAX30105 **INT** | −1 | Unwired — firmware polls the sensor every loop() instead of using the interrupt line. |
 | MPU6050 **INT** | −1 | Unwired — same, polling only. |
-| **Button A** (Back) | 4 | Non-strapping — safe even if held at reset. |
-| **Button B** (Select) | 5 | Non-strapping. |
+| **Button A** (Back) | 4 | Tap → previous screen; hold → home. Non-strapping — safe even if held at reset. |
+| **Button B** (Select) | 5 | Single tap → home; double tap → display mute (vitals keep running). |
 | **GPS RX** | 6 | Any GPIO works as UART via the C3 matrix. |
 | **GPS TX** | — | Needs a free pin once GPS lands (0, 1, 2, or 10). |
 | **Battery ADC** | 3 | Must be **ADC1** (GPIO 0–4); ADC2 is unusable with Wi-Fi on. |
@@ -94,30 +94,31 @@ firmware never hard-codes a pin. Set any optional pin to `-1` to disable it.
 
 ## Resistors — what each one is for
 
-### Buttons: 330 Ω in series to GND, no pull-up
+### Buttons: 330 Ω in series to 3.3V, active-high
 
-Wire each button `GPIO → button → 330 Ω → GND`. The firmware sets `INPUT_PULLUP`, so the
-**external pull-up is not needed** — the C3's internal one (~45 kΩ) already holds the pin
-HIGH when the button is open.
+Wire each button `GPIO → button → 330 Ω → 3.3 V`. The firmware sets `INPUT_PULLDOWN`
+(`BTN_ACTIVE_HIGH 1` in `config.h`), so the C3's internal pulldown (~45 kΩ) holds the pin
+LOW when the button is open — **no external pulldown needed**. Pressing throws the pin
+HIGH through the 330 Ω series resistor.
 
-The series resistor to GND is the one worth adding. It costs nothing and protects the pin:
+The series resistor is the one worth adding. It costs nothing and protects the pin:
 
-| Value | Pressed logic level | Fault current if the pin is ever driven HIGH | Verdict |
+| Value | Pressed logic level | Fault current if the pin is ever driven LOW | Verdict |
 |---|---|---|---|
-| 0 Ω (wire) | 0 mV | **1 A limited only by the pad** — kills the GPIO | works, but unprotected |
-| **330 Ω** | 24 mV | 10 mA | **recommended** |
-| 1 kΩ | 72 mV | 3.3 mA | safest, still fine |
-| 4.7 kΩ | 312 mV | 0.7 mA | too close to V_IL — don't |
+| 0 Ω (wire) | 3.30 V | **3.3 V limited only by the pad** | works, but unprotected |
+| **330 Ω** | 3.28 V | 10 mA | **recommended** |
+| 1 kΩ | 3.23 V | 3.3 mA | safest, still fine |
+| 4.7 kΩ | 2.99 V | 0.7 mA | low margin against V_IH — don't |
 
-The pressed level has to stay under **V_IL ≈ 0.25 × 3.3 V = 0.83 V**. With the internal
-45 kΩ pull-up, a 330 Ω leg to ground gives `3.3 × 330/45330 = 24 mV` — a very solid LOW
-with ~35× margin. At 4.7 kΩ you are at 312 mV, still technically low but with no margin for
-a dirty contact, which is why the table stops there.
+The pressed level needs to clear V_IH ≈ 0.75 × 3.3 V ≈ 2.48 V. With 330 Ω in series against
+the 45 kΩ internal pulldown, the pin sees `3.3 × 45000/(45000+330) = 3.28 V` — a very
+solid HIGH, and even at 4.7 kΩ you still clear V_IH but with less margin on a dirty
+contact, which is why the table stops there.
 
 The fault case is real: if a future firmware change ever configures GPIO 4 or 5 as an
-`OUTPUT` and drives it HIGH while the button is pressed, a bare wire to GND is a dead short
-across the pin driver. 330 Ω caps that at 10 mA, well inside the ESP32-C3's 40 mA per-pin
-limit, and turns a destroyed board into a non-event.
+`OUTPUT` and drives it LOW while the button is pressed, a bare wire to 3.3 V is a dead
+short across the pin driver. 330 Ω caps that at 10 mA, well inside the ESP32-C3's 40 mA
+per-pin limit, and turns a destroyed board into a non-event.
 
 **Optional:** 100 nF from each GPIO to GND for hardware debounce (τ = 45 kΩ × 100 nF ≈
 4.5 ms). Not required — `fitness_watch.ino` already debounces in software over 50 ms — but
@@ -159,7 +160,12 @@ ever see errors, and accept the extra draw.
 Do **not** add series resistors on SDA/SCL. They are open-drain lines; series resistance
 slows edges and buys nothing.
 
-### Battery divider (M7, not wired yet): 2 × 100 kΩ
+### Battery divider (M7): 2 × 100 kΩ
+
+> Full battery/charger/boost design — including the charge-from-itself loop to avoid —
+> is in **[POWER.md](POWER.md)**. The firmware side is done (`power.h` / `power.cpp`);
+> the hardware is not built yet.
+
 
 A LiPo's 4.2 V exceeds the ADC's range, so halve it: `BAT+ → 100 kΩ → GPIO 3 → 100 kΩ → GND`,
 giving 2.1 V at full charge, inside ADC1's 11 dB range. That pair draws 21 µA continuously
@@ -185,6 +191,50 @@ work, not for a watch. The three levers, in order of payoff: blank the OLED on a
 batch Wi-Fi syncs rather than holding an association. Sizing the battery is an M7 decision;
 the peaks matter more than the average, so the cell also needs to source 300 mA without
 browning out the LDO.
+
+---
+
+## Powering the board from a battery
+
+The SuperMini has **no onboard charger** and, critically, its **5 V pin is wired straight to
+USB VBUS with no OR-ing diode**. Two hard rules follow:
+
+1. **Never power the 5 V pin while the USB-C is plugged in** — the two sources collide and
+   can destroy the board, your battery, or the PC's USB port.
+2. **Never feed a raw Li-ion into the 3 V3 pin** — a full cell is 4.2 V, past the ESP32-C3's
+   3.6 V absolute max. The 3 V3 pin is only safe as an input from a *regulated* 3.3 V source.
+
+The board's own regulator is a **ME6211 LDO (max 500 mA)**, which is exactly what the
+300 mA Wi-Fi TX peaks need — so the simplest battery setup just uses it:
+
+```
+Li-ion / LiPo 3.7 V (e.g. 500 mAh)
+   │
+   └─ TP4056 charger module (DW01 + FS8205 protection)
+        OUT+  ──► board 5V pin
+        OUT−  ──► board GND
+        charge through the TP4056's own USB port
+```
+
+- The TP4056's OUT is the cell itself (3.0–4.2 V) — fine for the 5 V pin's 3.3–6 V input
+  range. Its onboard LDO is fed straight to the 3.3 V rail everything (chip + OLED +
+  MAX30102 + MPU6050) runs off; the ME6211's 500 mA budget covers the whole watch.
+- Charge through the **TP4056's USB port**, never the board's — that keeps rule 1 enforced
+  automatically.
+- **Set the charge current to match the cell.** The TP4056 ships at 1 A (`Rprog` = 1.2 kΩ),
+  too hot for a watch cell. For a 500 mAh cell use ~0.5C ≈ 250 mA → `Rprog ≈ 4.7 kΩ`
+  (`I = 1200 / Rprog`); a 1 A charge into a small cell risks overheating. One catch: both
+  the charger and the board drain the same battery node while USB is plugged in, so a
+  slow-charge cell can't "charge up" and run the watch at full tilt at once — fine for
+  bench work, just don't expect net charging under load.
+- **Caveat:** the ME6211's dropout means the board browns out once the cell drops below
+  ~3.5–3.6 V, wasting the last ~20% of capacity. To use the full cell range you'd instead
+  run the battery through a low-dropout 3.3 V regulator (MCP1700 / HT7333) into the 3 V3
+  pin — but those only source ~250 mA, too weak for Wi-Fi TX, so this path is the better
+  trade for a build that syncs. (An alternative that keeps full range *and* the 500 mA
+  budget: a 5 V boost converter between battery and 5 V pin.)
+- For M7 battery monitoring: the divider above (`BAT+ → 100 kΩ → GPIO 3 → 100 kΩ → GND`,
+  or read straight off the TP4056 OUT+ divider) must live on **ADC1 (GPIO 0–4)**.
 
 ---
 
@@ -286,7 +336,8 @@ forces an upload now; `CMD=unpair` wipes the settings and reboots into setup.
 ### Pairing path 2 — WiFi captive portal
 
 If you'd rather use a browser: when unpaired, the watch also boots an open SoftAP called
-`FitnessAI-<xxxxxx>`. Join it from your phone, open **http://192.168.4.1** (captive
+**`FitnessAI Watch`** (same name as the BLE advertisement). Join it from your phone, open
+**http://192.168.4.1** (captive
 portals on iOS/Android open it automatically), fill in SSID/password/token, and the page
 shows live connect progress. The portal shuts itself down ~12 s after a successful pair.
 
@@ -306,11 +357,25 @@ provides the absolute gravity vector (gyro integration alone would drift), and t
 applies U8G2_R0–R3. Tune `ORIENT_*` in `config.h`; if the sensor is soldered rotated on
 your panel, adjust the direction table in `orientScreen()`.
 
+### Display stability ("the screen tweaks")
+
+Two symptoms — the screen looks like it "changed orientation" while sitting still, and
+text looks garbled/interleaved — are both **corrupted frames**, not the orientation
+logic. When the MPU is missing, `orientScreen()` never even runs, and a half-written or
+column-shifted SSD1306 frame can *look* rotated. There's no read-back from the panel, so
+`displaySelfHeal()` in `fitness_watch.ino` periodically re-runs `u8g2.begin()` +
+repaints to force the controller back in sync. The interval is **`DISPLAY_SELF_HEAL_MS`**
+in `config.h` (default 5000 ms). The corruption is triggered by a radio burst landing
+mid-frame or a marginal bus — the lasting cure is electrical: 4.7 kΩ pull-ups, a 100 nF
+cap on the OLED's supply, and short wires (see "Resistors"). U8g2's `begin()` does *not*
+reset the display rotation, so the self-heal can't flip orientation by itself.
+
 ### Serial console (bring-up)
 
-115200 baud over USB. Commands: `p` status, `s` force sync, `r` reboot, `clear` wipe
-pairing and reboot, `h` help. All boot/network/sync events log with a `[watch]`/`[net]`/
-`[ble]` prefix; set `DEBUG_SERIAL 0` in `config.h` to silence the chatty logs.
+115200 baud over USB. Commands: `p` status, `s` force sync, `t` print the paired token,
+`r` reboot, `clear` wipe pairing and reboot, `h` help. All boot/network/sync events log
+with a `[watch]`/`[net]`/`[ble]` prefix; set `DEBUG_SERIAL 0` in `config.h` to silence the
+chatty logs.
 
 ---
 
@@ -335,6 +400,29 @@ arduino-cli compile --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app watch/fi
 arduino-cli upload  --fqbn esp32:esp32:esp32c3:PartitionScheme=huge_app -p COM5 watch/firmware/fitness_watch
 ```
 
+### Schematic
+
+The full circuit — including the automatic USB/battery switchover — is a KiCad
+10 project in **[hardware/](hardware/)**, ERC clean, with PDF/SVG/netlist/BOM in
+`hardware/export/`. The sheet is generated from `hardware/generate_schematic.py`,
+so the netlist and this firmware's `config.h` stay in step.
+
+### No hardware? Run it in the simulator
+
+The firmware also runs on an emulated ESP32-C3 with an emulated OLED, IMU,
+buttons and battery slider — see **[sim/README.md](sim/README.md)**.
+
+```bash
+cd watch/sim
+python simctl.py build     # compile with -DSIM_BUILD=1
+python simctl.py lint      # validate the emulated board (offline)
+python simctl.py test      # automated scenarios (free Wokwi token)
+```
+
+It runs the same `.bin` this section builds, so the display driver, beat
+detector, button state machine and battery curve are all exercised for real.
+`SIM_BUILD` is set only by `simctl.py`; the commands above are unaffected by it.
+
 **Arduino IDE:** Boards Manager → install *esp32* → select **ESP32C3 Dev Module** (set
 *Partition Scheme → Huge APP (3MB No OTA/1MB SPIFFS)* in Tools) → Library Manager →
 install **U8g2**, **SparkFun MAX3010x Pulse and Proximity Sensor Library**, **Adafruit
@@ -355,7 +443,7 @@ Full-buffer mode (`U8G2_..._F_HW_I2C`) is used — the C3 has ample RAM.
 ## Roadmap
 
 - [x] **M1** — screen + program skeleton: boot loading screen → live home screen
-- [x] **M2** — button navigation (tap = cycle screens, hold = home) across Home/HR/Steps/Status.
+- [x] **M2** — button navigation (A tap = prev screen, A hold = home, B single = home, B double = display mute) across Home/HR/Steps/Status.
       (The home clock is a real NTP clock now — syncs over WiFi or the BLE `TIME` char.)
 - [x] **M3** — sensors: MPU6050 step counter + MAX30105 heart rate (SpO2 not yet computed)
 - [x] **M3.5** — auto-orientation: the UI rotates to stay upright via the MPU6050 accel+gyro
@@ -363,7 +451,8 @@ Full-buffer mode (`U8G2_..._F_HW_I2C`) is used — the C3 has ample RAM.
       (pair / time sync / commands), both storing a device token in NVS
 - [x] **M5** — sync to backend `/ingest` with the paired device token (offline RAM queue)
 - [ ] **M6** — GPS workout recording → `/routes` (NEED a free GPIO for GPS TX)
-- [ ] **M7** — battery monitor, sleep/display-timeout, haptics, aggressive BLE/Wi-Fi power saving
+- [ ] **M7** — battery monitor **(firmware done — `power.h`/`power.cpp`, see [POWER.md](POWER.md);
+      hardware not built)**, sleep/display-timeout, haptics, aggressive BLE/Wi-Fi power saving
 
 Pairing reuses the platform's device-token system (web app → **Devices** → generate code →
 enter on the watch via BLE or the portal). Data lands in Supabase under your account;

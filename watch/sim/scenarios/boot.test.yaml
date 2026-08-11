@@ -1,0 +1,31 @@
+name: boot
+version: 1
+author: FitnessAI Watch
+
+# Proves the firmware gets all the way through setup() in the emulator:
+# settings load from NVS, I2C comes up, the MPU6050 answers on the bus, the
+# loading bar animates, and loop() starts.
+#
+# The MPU6050 line is the valuable assertion. It is a real I2C transaction to a
+# real emulated device at 0x68 over GPIO7/8 — if the pin assignment in config.h
+# were wrong, or the bus clock misconfigured, it would never print.
+steps:
+  - wait-serial: 'MPU6050 init OK'
+  - wait-serial: 'Boot complete'
+
+  # loop() is alive and the serial console is being pumped.
+  - write-serial: "screen\n"
+  - wait-serial: '[sim] screen=1'      # 1 = SCREEN_HOME
+
+  # Battery monitor is live in the sim (PIN_BATT_ADC=3, slide pot on GPIO3).
+  - write-serial: "batt\n"
+  - wait-serial: '[sim] batt valid=1'
+
+  # Capture what the OLED is actually rendering. This is the part no amount of
+  # code review substitutes for: it catches a wrong init sequence, a bad
+  # rotation, or text drawn off-panel — the exact class of bug that made the
+  # real display unreadable during bring-up.
+  - delay: 1s
+  - take-screenshot:
+      part-id: oled
+      save-to: shots/home.png

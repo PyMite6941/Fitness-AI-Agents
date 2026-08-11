@@ -1,0 +1,9 @@
+# Wokwi project manifest — see sim/README.md
+#
+# firmware MUST be the .merged.bin (bootloader + partition table + app). The
+# plain fitness_watch.ino.bin is the application image only; the emulator would
+# start at a blank reset vector and sit there printing nothing.
+[wokwi]
+version = 1
+firmware = 'build/fitness_watch.ino.merged.bin'
+elf = 'build/fitness_watch.ino.elf'

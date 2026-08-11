@@ -1,0 +1,46 @@
+name: heartrate
+version: 1
+author: FitnessAI Watch
+
+# The regression test for the four heart-rate defects fixed during bring-up.
+# Nothing here asserts on a number the simulator handed us: simIR() emits only a
+# waveform, and every value checked below comes out of the real checkForBeat()
+# path, the real rolling average and the real finger gating.
+#
+# INRANGE means "the detected BPM is within +/-12.5% of the commanded rate" —
+# computed in the firmware's `hr` command because Wokwi's wait-serial is a plain
+# substring match and cannot express a numeric range.
+steps:
+  - wait-serial: "Boot complete"
+
+  # ── 1. An empty sensor must report NO heart rate ──────────────────────────
+  # checkForBeat() will happily find "beats" in noise, so the firmware gates on
+  # fingerPresent. Regression: before the gate, an untouched watch showed a BPM.
+  - write-serial: "finger 0\n"
+  - delay: 2s
+  - write-serial: "hr\n"
+  - wait-serial: "[sim] hr=0 want="
+
+  # ── 2. Beats are detected and averaged to the commanded rate ──────────────
+  - write-serial: "bpm 72\n"
+  - write-serial: "finger 1\n"
+  - delay: 12s              # ~14 beats: fills the 4-slot average several times
+  - write-serial: "hr\n"
+  - wait-serial: "INRANGE"
+
+  # ── 3. Removing the finger clears the reading ─────────────────────────────
+  # Regression: the last BPM used to persist and reappear instantly on re-touch.
+  - write-serial: "finger 0\n"
+  - delay: 1s
+  - write-serial: "hr\n"
+  - wait-serial: "[sim] hr=0 want="
+
+  # ── 4. A re-touch re-measures from scratch at the NEW rate ────────────────
+  # This is the cold-start averaging bug: dividing by RATE_SIZE before the
+  # buffer refilled averaged in zeros and reported roughly a quarter of truth.
+  # If that regressed, a commanded 120 comes back near 30 and fails INRANGE.
+  - write-serial: "bpm 120\n"
+  - write-serial: "finger 1\n"
+  - delay: 12s
+  - write-serial: "hr\n"
+  - wait-serial: "INRANGE"

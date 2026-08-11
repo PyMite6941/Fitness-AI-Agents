@@ -1,0 +1,2156 @@
+(export
+	(version "E")
+	(design
+		(source "C:\\Users\\gresh\\OneDrive\\ドキュメント\\portfolio\\Fitness AI Agents\\watch\\hardware\\fitness watch.kicad_sch")
+		(date "2026-08-11T21:19:26")
+		(tool "Eeschema 10.0.5")
+		(sheet
+			(number "1")
+			(name "/")
+			(tstamps "/")
+			(title_block
+				(title)
+				(company)
+				(rev)
+				(date)
+				(source "fitness watch.kicad_sch")
+				(comment
+					(number "1")
+					(value "")
+				)
+				(comment
+					(number "2")
+					(value "")
+				)
+				(comment
+					(number "3")
+					(value "")
+				)
+				(comment
+					(number "4")
+					(value "")
+				)
+				(comment
+					(number "5")
+					(value "")
+				)
+				(comment
+					(number "6")
+					(value "")
+				)
+				(comment
+					(number "7")
+					(value "")
+				)
+				(comment
+					(number "8")
+					(value "")
+				)
+				(comment
+					(number "9")
+					(value "")
+				)
+			)
+		)
+	)
+	(components
+		(comp
+			(ref "BT1")
+			(value "Li-ion 3.7V 500-1200mAh")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "Battery_Cell")
+				(description "Single-cell battery")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "battery cell")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "cc852146-2f92-52ad-bd91-18b9cfb2c2bd")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C1")
+			(value "100nF")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "8f34a11a-1673-5715-9efb-e97e49e24d29")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C2")
+			(value "100nF")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "a87ed703-586c-5829-9b54-f7fb01a38836")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C3")
+			(value "100nF")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "16b2be86-4021-52e0-b0c6-d1f1e13e8b10")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "C4")
+			(value "100nF")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "C")
+				(description "Unpolarized capacitor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "cap capacitor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "C_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "79f5b802-b63d-5d89-9b33-999a7f9b7d60")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "D1")
+			(value "1N5819")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "D_Schottky")
+				(description "Schottky diode")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "diode Schottky")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "TO-???* *_Diode_* *SingleDiode* D_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "4f5680f7-8f8b-5f74-a76b-38df4bd6da6f")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "R1")
+			(value "330")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "74c098cc-e2e2-55f3-8ab5-42637e2104c1")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "R2")
+			(value "330")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "cb43f41b-4593-5530-8a1a-c605e51c28b6")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "R3")
+			(value "100k")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "84a58b0c-9221-5196-8363-d04aefdeb8b5")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "R4")
+			(value "100k")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Device")
+				(part "R")
+				(description "Resistor")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "R res resistor")
+			)
+			(property
+				(name "ki_fp_filters")
+				(value "R_*")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "db4cfec8-cb72-5f00-af7c-c0b1120f3188")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "SW1")
+			(value "Button A")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Switch")
+				(part "SW_Push")
+				(description "Push button switch, generic, two pins")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "switch normally-open pushbutton push-button")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "4a281c6c-5dfa-53af-9cc4-13c32beb8fc8")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "SW2")
+			(value "Button B")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "Switch")
+				(part "SW_Push")
+				(description "Push button switch, generic, two pins")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(property
+				(name "ki_keywords")
+				(value "switch normally-open pushbutton push-button")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "c1eee938-0491-536c-83bc-dbde9c09dafc")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U1")
+			(value "ESP32-C3 SuperMini")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "fitness-watch")
+				(part "ESP32-C3-SuperMini")
+				(description "ESP32-C3 SuperMini module")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "f1d80cf2-eeb9-5b1a-a932-6f9c974bdd9a")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "5")
+						)
+						(pin
+							(num "7")
+						)
+						(pin
+							(num "9")
+						)
+						(pin
+							(num "11")
+						)
+						(pin
+							(num "13")
+						)
+						(pin
+							(num "15")
+						)
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "4")
+						)
+						(pin
+							(num "6")
+						)
+						(pin
+							(num "8")
+						)
+						(pin
+							(num "10")
+						)
+						(pin
+							(num "12")
+						)
+						(pin
+							(num "14")
+						)
+						(pin
+							(num "16")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U2")
+			(value "SSD1306 OLED 128x64 (0x3C)")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "fitness-watch")
+				(part "SSD1306-OLED-Module")
+				(description "SSD1306 128x64 I2C OLED module")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "38f52d67-cd69-5d14-85da-727f08e60367")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "4")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U3")
+			(value "MAX30102 HR/SpO2 (0x57)")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "fitness-watch")
+				(part "MAX30102-Module")
+				(description "MAX30102 heart-rate / SpO2 breakout")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "3a75011f-f184-53a1-9ad0-1fc5e6e0db16")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "4")
+						)
+						(pin
+							(num "5")
+						)
+						(pin
+							(num "6")
+						)
+						(pin
+							(num "7")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U4")
+			(value "MPU6050 GY-521 (0x68)")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "fitness-watch")
+				(part "MPU6050-GY521")
+				(description "MPU6050 GY-521 accelerometer / gyro breakout")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "5feb344f-e15d-582c-b5c3-8d12266d1e75")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "4")
+						)
+						(pin
+							(num "5")
+						)
+						(pin
+							(num "6")
+						)
+						(pin
+							(num "7")
+						)
+						(pin
+							(num "8")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U5")
+			(value "TP4056 + DW01A/FS8205")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "fitness-watch")
+				(part "TP4056-Protected")
+				(description "TP4056 Li-ion charger with DW01A+FS8205 protection")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "f3bc9646-fe7f-528d-b5a3-9f656443d8db")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "4")
+						)
+						(pin
+							(num "5")
+						)
+						(pin
+							(num "6")
+						)
+					)
+				)
+			)
+		)
+		(comp
+			(ref "U6")
+			(value "MT3608 boost - set to 5.1V")
+			(fields
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description")
+				)
+			)
+			(libsource
+				(lib "fitness-watch")
+				(part "MT3608-Boost")
+				(description "MT3608 adjustable step-up converter")
+			)
+			(property
+				(name "Sheetname")
+				(value "Root")
+			)
+			(property
+				(name "Sheetfile")
+				(value "fitness watch.kicad_sch")
+			)
+			(sheetpath
+				(names "/")
+				(tstamps "/")
+			)
+			(tstamps "af1f086a-ce40-560b-80a5-2f5b7395fe6a")
+			(units
+				(unit
+					(name "A")
+					(pins
+						(pin
+							(num "1")
+						)
+						(pin
+							(num "2")
+						)
+						(pin
+							(num "3")
+						)
+						(pin
+							(num "4")
+						)
+					)
+				)
+			)
+		)
+	)
+	(groups)
+	(variants)
+	(libparts
+		(libpart
+			(lib "Device")
+			(part "Battery_Cell")
+			(description "Single-cell battery")
+			(fields
+				(field
+					(name "Reference") "BT")
+				(field
+					(name "Value") "Battery_Cell")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "Single-cell battery")
+				(field
+					(name "Sim.Device") "V")
+				(field
+					(name "Sim.Type") "DC")
+				(field
+					(name "Sim.Pins") "1=+ 2=-")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "+")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "-")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "Device")
+			(part "C")
+			(description "Unpolarized capacitor")
+			(footprints
+				(fp "C_*")
+			)
+			(fields
+				(field
+					(name "Reference") "C")
+				(field
+					(name "Value") "C")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "Unpolarized capacitor")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "Device")
+			(part "D_Schottky")
+			(description "Schottky diode")
+			(footprints
+				(fp "TO-???*")
+				(fp "*_Diode_*")
+				(fp "*SingleDiode*")
+				(fp "D_*")
+			)
+			(fields
+				(field
+					(name "Reference") "D")
+				(field
+					(name "Value") "D_Schottky")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "Schottky diode")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "K")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "A")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "Device")
+			(part "R")
+			(description "Resistor")
+			(footprints
+				(fp "R_*")
+			)
+			(fields
+				(field
+					(name "Reference") "R")
+				(field
+					(name "Value") "R")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "Resistor")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "Switch")
+			(part "SW_Push")
+			(description "Push button switch, generic, two pins")
+			(fields
+				(field
+					(name "Reference") "SW")
+				(field
+					(name "Value") "SW_Push")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "Push button switch, generic, two pins")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "1")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "2")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "fitness-watch")
+			(part "ESP32-C3-SuperMini")
+			(description "ESP32-C3 SuperMini module")
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "ESP32-C3-SuperMini")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "ESP32-C3 SuperMini module")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "5V")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "GPIO5")
+					(type "bidirectional")
+				)
+				(pin
+					(num "3")
+					(name "GND")
+					(type "power_in")
+				)
+				(pin
+					(num "4")
+					(name "GPIO6")
+					(type "bidirectional")
+				)
+				(pin
+					(num "5")
+					(name "3V3")
+					(type "power_out")
+				)
+				(pin
+					(num "6")
+					(name "GPIO7")
+					(type "bidirectional")
+				)
+				(pin
+					(num "7")
+					(name "GPIO4")
+					(type "bidirectional")
+				)
+				(pin
+					(num "8")
+					(name "GPIO8")
+					(type "bidirectional")
+				)
+				(pin
+					(num "9")
+					(name "GPIO3")
+					(type "bidirectional")
+				)
+				(pin
+					(num "10")
+					(name "GPIO9")
+					(type "bidirectional")
+				)
+				(pin
+					(num "11")
+					(name "GPIO2")
+					(type "bidirectional")
+				)
+				(pin
+					(num "12")
+					(name "GPIO10")
+					(type "bidirectional")
+				)
+				(pin
+					(num "13")
+					(name "GPIO1")
+					(type "bidirectional")
+				)
+				(pin
+					(num "14")
+					(name "GPIO20")
+					(type "bidirectional")
+				)
+				(pin
+					(num "15")
+					(name "GPIO0")
+					(type "bidirectional")
+				)
+				(pin
+					(num "16")
+					(name "GPIO21")
+					(type "bidirectional")
+				)
+			)
+		)
+		(libpart
+			(lib "fitness-watch")
+			(part "MAX30102-Module")
+			(description "MAX30102 heart-rate / SpO2 breakout")
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "MAX30102-Module")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "MAX30102 heart-rate / SpO2 breakout")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "VIN")
+					(type "power_in")
+				)
+				(pin
+					(num "2")
+					(name "GND")
+					(type "power_in")
+				)
+				(pin
+					(num "3")
+					(name "SCL")
+					(type "input")
+				)
+				(pin
+					(num "4")
+					(name "SDA")
+					(type "bidirectional")
+				)
+				(pin
+					(num "5")
+					(name "INT")
+					(type "output")
+				)
+				(pin
+					(num "6")
+					(name "IRD")
+					(type "passive")
+				)
+				(pin
+					(num "7")
+					(name "RD")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "fitness-watch")
+			(part "MPU6050-GY521")
+			(description "MPU6050 GY-521 accelerometer / gyro breakout")
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "MPU6050-GY521")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "MPU6050 GY-521 accelerometer / gyro breakout")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "VCC")
+					(type "power_in")
+				)
+				(pin
+					(num "2")
+					(name "GND")
+					(type "power_in")
+				)
+				(pin
+					(num "3")
+					(name "SCL")
+					(type "input")
+				)
+				(pin
+					(num "4")
+					(name "SDA")
+					(type "bidirectional")
+				)
+				(pin
+					(num "5")
+					(name "XDA")
+					(type "passive")
+				)
+				(pin
+					(num "6")
+					(name "XCL")
+					(type "passive")
+				)
+				(pin
+					(num "7")
+					(name "AD0")
+					(type "input")
+				)
+				(pin
+					(num "8")
+					(name "INT")
+					(type "output")
+				)
+			)
+		)
+		(libpart
+			(lib "fitness-watch")
+			(part "MT3608-Boost")
+			(description "MT3608 adjustable step-up converter")
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "MT3608-Boost")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "MT3608 adjustable step-up converter")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "VIN+")
+					(type "power_in")
+				)
+				(pin
+					(num "2")
+					(name "VIN-")
+					(type "passive")
+				)
+				(pin
+					(num "3")
+					(name "VOUT+")
+					(type "power_out")
+				)
+				(pin
+					(num "4")
+					(name "VOUT-")
+					(type "passive")
+				)
+			)
+		)
+		(libpart
+			(lib "fitness-watch")
+			(part "SSD1306-OLED-Module")
+			(description "SSD1306 128x64 I2C OLED module")
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "SSD1306-OLED-Module")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "SSD1306 128x64 I2C OLED module")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "GND")
+					(type "power_in")
+				)
+				(pin
+					(num "2")
+					(name "VCC")
+					(type "power_in")
+				)
+				(pin
+					(num "3")
+					(name "SCL")
+					(type "input")
+				)
+				(pin
+					(num "4")
+					(name "SDA")
+					(type "bidirectional")
+				)
+			)
+		)
+		(libpart
+			(lib "fitness-watch")
+			(part "TP4056-Protected")
+			(description "TP4056 Li-ion charger with DW01A+FS8205 protection")
+			(fields
+				(field
+					(name "Reference") "U")
+				(field
+					(name "Value") "TP4056-Protected")
+				(field
+					(name "Footprint")
+				)
+				(field
+					(name "Datasheet")
+				)
+				(field
+					(name "Description") "TP4056 Li-ion charger with DW01A+FS8205 protection")
+			)
+			(pins
+				(pin
+					(num "1")
+					(name "IN+")
+					(type "passive")
+				)
+				(pin
+					(num "2")
+					(name "IN-")
+					(type "passive")
+				)
+				(pin
+					(num "3")
+					(name "BAT+")
+					(type "passive")
+				)
+				(pin
+					(num "4")
+					(name "BAT-")
+					(type "passive")
+				)
+				(pin
+					(num "5")
+					(name "OUT+")
+					(type "power_out")
+				)
+				(pin
+					(num "6")
+					(name "OUT-")
+					(type "passive")
+				)
+			)
+		)
+	)
+	(libraries
+		(library
+			(logical "Device")
+			(uri "${KICAD10_SYMBOL_DIR}/Device.kicad_sym")
+		)
+		(library
+			(logical "Switch")
+			(uri "${KICAD10_SYMBOL_DIR}/Switch.kicad_sym")
+		)
+		(library
+			(logical "fitness-watch")
+			(uri "${KIPRJMOD}/fitness-watch.kicad_sym")
+		)
+	)
+	(nets
+		(net
+			(code "1")
+			(name "+3V3")
+			(class "Default")
+			(node
+				(ref "C1")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "C2")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "C3")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "SW1")
+				(pin "2")
+				(pinfunction "2_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "SW2")
+				(pin "2")
+				(pinfunction "2_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "5")
+				(pinfunction "3V3_5")
+				(pintype "power_out")
+			)
+			(node
+				(ref "U2")
+				(pin "2")
+				(pinfunction "VCC_2")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U3")
+				(pin "1")
+				(pinfunction "VIN_1")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U4")
+				(pin "1")
+				(pinfunction "VCC_1")
+				(pintype "power_in")
+			)
+		)
+		(net
+			(code "2")
+			(name "+5V")
+			(class "Default")
+			(node
+				(ref "D1")
+				(pin "1")
+				(pinfunction "K_1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "1")
+				(pinfunction "5V_1")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "3")
+			(name "/BAT+")
+			(class "Default")
+			(node
+				(ref "BT1")
+				(pin "1")
+				(pinfunction "+_1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U5")
+				(pin "3")
+				(pinfunction "BAT+_3")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "4")
+			(name "/BTN_A")
+			(class "Default")
+			(node
+				(ref "R1")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "7")
+				(pinfunction "GPIO4_7")
+				(pintype "bidirectional")
+			)
+		)
+		(net
+			(code "5")
+			(name "/BTN_A_SW")
+			(class "Default")
+			(node
+				(ref "R1")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "SW1")
+				(pin "1")
+				(pinfunction "1_1")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "6")
+			(name "/BTN_B")
+			(class "Default")
+			(node
+				(ref "R2")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "2")
+				(pinfunction "GPIO5_2")
+				(pintype "bidirectional")
+			)
+		)
+		(net
+			(code "7")
+			(name "/BTN_B_SW")
+			(class "Default")
+			(node
+				(ref "R2")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "SW2")
+				(pin "1")
+				(pinfunction "1_1")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "8")
+			(name "/SCL")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "8")
+				(pinfunction "GPIO8_8")
+				(pintype "bidirectional")
+			)
+			(node
+				(ref "U2")
+				(pin "3")
+				(pinfunction "SCL_3")
+				(pintype "input")
+			)
+			(node
+				(ref "U3")
+				(pin "3")
+				(pinfunction "SCL_3")
+				(pintype "input")
+			)
+			(node
+				(ref "U4")
+				(pin "3")
+				(pinfunction "SCL_3")
+				(pintype "input")
+			)
+		)
+		(net
+			(code "9")
+			(name "/SDA")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "6")
+				(pinfunction "GPIO7_6")
+				(pintype "bidirectional")
+			)
+			(node
+				(ref "U2")
+				(pin "4")
+				(pinfunction "SDA_4")
+				(pintype "bidirectional")
+			)
+			(node
+				(ref "U3")
+				(pin "4")
+				(pinfunction "SDA_4")
+				(pintype "bidirectional")
+			)
+			(node
+				(ref "U4")
+				(pin "4")
+				(pinfunction "SDA_4")
+				(pintype "bidirectional")
+			)
+		)
+		(net
+			(code "10")
+			(name "/VBAT_SENSE")
+			(class "Default")
+			(node
+				(ref "C4")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "R3")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "R4")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "9")
+				(pinfunction "GPIO3_9")
+				(pintype "bidirectional")
+			)
+		)
+		(net
+			(code "11")
+			(name "/VBOOST")
+			(class "Default")
+			(node
+				(ref "D1")
+				(pin "2")
+				(pinfunction "A_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U6")
+				(pin "3")
+				(pinfunction "VOUT+_3")
+				(pintype "power_out")
+			)
+		)
+		(net
+			(code "12")
+			(name "/VCELL")
+			(class "Default")
+			(node
+				(ref "R3")
+				(pin "1")
+				(pintype "passive")
+			)
+			(node
+				(ref "U5")
+				(pin "5")
+				(pinfunction "OUT+_5")
+				(pintype "power_out")
+			)
+			(node
+				(ref "U6")
+				(pin "1")
+				(pinfunction "VIN+_1")
+				(pintype "power_in")
+			)
+		)
+		(net
+			(code "13")
+			(name "GND")
+			(class "Default")
+			(node
+				(ref "BT1")
+				(pin "2")
+				(pinfunction "-_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "C1")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "C2")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "C3")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "C4")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "R4")
+				(pin "2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U1")
+				(pin "3")
+				(pinfunction "GND_3")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U2")
+				(pin "1")
+				(pinfunction "GND_1")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U3")
+				(pin "2")
+				(pinfunction "GND_2")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U4")
+				(pin "2")
+				(pinfunction "GND_2")
+				(pintype "power_in")
+			)
+			(node
+				(ref "U4")
+				(pin "7")
+				(pinfunction "AD0_7")
+				(pintype "input")
+			)
+			(node
+				(ref "U5")
+				(pin "4")
+				(pinfunction "BAT-_4")
+				(pintype "passive")
+			)
+			(node
+				(ref "U5")
+				(pin "6")
+				(pinfunction "OUT-_6")
+				(pintype "passive")
+			)
+			(node
+				(ref "U6")
+				(pin "2")
+				(pinfunction "VIN-_2")
+				(pintype "passive")
+			)
+			(node
+				(ref "U6")
+				(pin "4")
+				(pinfunction "VOUT-_4")
+				(pintype "passive")
+			)
+		)
+		(net
+			(code "14")
+			(name "unconnected-(U1-GPIO0-Pad15)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "15")
+				(pinfunction "GPIO0_15")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "15")
+			(name "unconnected-(U1-GPIO1-Pad13)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "13")
+				(pinfunction "GPIO1_13")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "16")
+			(name "unconnected-(U1-GPIO2-Pad11)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "11")
+				(pinfunction "GPIO2_11")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "17")
+			(name "unconnected-(U1-GPIO6-Pad4)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "4")
+				(pinfunction "GPIO6_4")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "18")
+			(name "unconnected-(U1-GPIO9-Pad10)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "10")
+				(pinfunction "GPIO9_10")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "19")
+			(name "unconnected-(U1-GPIO10-Pad12)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "12")
+				(pinfunction "GPIO10_12")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "20")
+			(name "unconnected-(U1-GPIO20-Pad14)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "14")
+				(pinfunction "GPIO20_14")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "21")
+			(name "unconnected-(U1-GPIO21-Pad16)")
+			(class "Default")
+			(node
+				(ref "U1")
+				(pin "16")
+				(pinfunction "GPIO21_16")
+				(pintype "bidirectional+no_connect")
+			)
+		)
+		(net
+			(code "22")
+			(name "unconnected-(U3-INT-Pad5)")
+			(class "Default")
+			(node
+				(ref "U3")
+				(pin "5")
+				(pinfunction "INT_5")
+				(pintype "output+no_connect")
+			)
+		)
+		(net
+			(code "23")
+			(name "unconnected-(U3-IRD-Pad6)")
+			(class "Default")
+			(node
+				(ref "U3")
+				(pin "6")
+				(pinfunction "IRD_6")
+				(pintype "passive+no_connect")
+			)
+		)
+		(net
+			(code "24")
+			(name "unconnected-(U3-RD-Pad7)")
+			(class "Default")
+			(node
+				(ref "U3")
+				(pin "7")
+				(pinfunction "RD_7")
+				(pintype "passive+no_connect")
+			)
+		)
+		(net
+			(code "25")
+			(name "unconnected-(U4-INT-Pad8)")
+			(class "Default")
+			(node
+				(ref "U4")
+				(pin "8")
+				(pinfunction "INT_8")
+				(pintype "output+no_connect")
+			)
+		)
+		(net
+			(code "26")
+			(name "unconnected-(U4-XCL-Pad6)")
+			(class "Default")
+			(node
+				(ref "U4")
+				(pin "6")
+				(pinfunction "XCL_6")
+				(pintype "passive+no_connect")
+			)
+		)
+		(net
+			(code "27")
+			(name "unconnected-(U4-XDA-Pad5)")
+			(class "Default")
+			(node
+				(ref "U4")
+				(pin "5")
+				(pinfunction "XDA_5")
+				(pintype "passive+no_connect")
+			)
+		)
+		(net
+			(code "28")
+			(name "unconnected-(U5-IN+-Pad1)")
+			(class "Default")
+			(node
+				(ref "U5")
+				(pin "1")
+				(pinfunction "IN+_1")
+				(pintype "passive+no_connect")
+			)
+		)
+		(net
+			(code "29")
+			(name "unconnected-(U5-IN--Pad2)")
+			(class "Default")
+			(node
+				(ref "U5")
+				(pin "2")
+				(pinfunction "IN-_2")
+				(pintype "passive+no_connect")
+			)
+		)
+	)
+)

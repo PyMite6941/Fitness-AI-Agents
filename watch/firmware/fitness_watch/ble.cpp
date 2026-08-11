@@ -10,10 +10,40 @@
 #include "config.h"
 #include "net.h"
 
+#if SIM_BUILD
+/* Wokwi does not emulate the ESP32's Bluetooth controller, so the whole BLE
+ * implementation is compiled out of simulator builds and replaced by these
+ * stubs. Calling into a controller that does not exist hangs the emulator with
+ * no output, which looks exactly like a firmware bug.
+ *
+ * These stubs — rather than relying on BLE_ENABLE=0 alone — are what make the
+ * simulator safe: with them, bleStart() is an inert no-op even if someone flips
+ * BLE_ENABLE back on in a sim build. Guarding only the CALL SITE would leave a
+ * live BLE stack one #define away from hanging the sim.
+ *
+ * Note this is not a size optimisation: measured against a sim build with this
+ * file compiled IN, the stubs save 24 bytes. That is because BLE_ENABLE=0
+ * already makes `if (BLE_ENABLE ...) bleStart()` a compile-time false, so the
+ * linker's --gc-sections had dropped the Bluedroid stack in both cases. (The
+ * stack itself is far from free: a hardware build with BLE actually running is
+ * ~237 KB larger than one where the call is eliminated.)
+ */
+void bleStart()       {}
+void bleTick()        {}
+bool bleActive()      { return false; }
+void bleNotifyState() {}
+void bleSleep()       {}
+void bleWake()        {}
+
+#else
+
 #include <BLEDevice.h>
 #include <BLEServer.h>
+#include <BLEService.h>
+#include <BLEAdvertising.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <esp_bt.h>
 #include <sys/time.h>
 
 #define BLE_DBG(fmt, ...) do { if (DEBUG_SERIAL) Serial.printf("[ble] " fmt "\n", ##__VA_ARGS__); } while (0)
@@ -21,8 +51,10 @@
 static BLEServer  *g_server = nullptr;
 static BLECharacteristic *g_stateChar = nullptr;
 static BLEAdvertising *g_adv = nullptr;
+static BLEAdvertisementData g_advData;
 static bool g_connected = false;
 static bool g_stackUp = false;
+static bool g_btPowered = true;
 static uint32_t g_lastStateMs = 0;
 
 // Build the short status string pushed on STATE: pairs this with logWatch().
@@ -160,13 +192,12 @@ void bleStart() {
 
   // The device name the phone shows in its Bluetooth list comes from the
   // advertisement data, so set it explicitly (not just on the init call).
-  BLEAdvertisementData adv;
-  adv.setName(BLE_DEVICE_NAME);
-  adv.setCompleteServices(BLEUUID(BLE_SERVICE_UUID));
-  adv.setFlags(0x06);   // LE General Discoverable + no BR/EDR (classic)
+  g_advData.setName(BLE_DEVICE_NAME);
+  g_advData.setCompleteServices(BLEUUID(BLE_SERVICE_UUID));
+  g_advData.setFlags(0x06);   // LE General Discoverable + no BR/EDR (classic)
 
   g_adv = BLEDevice::getAdvertising();
-  g_adv->setAdvertisementData(adv);
+  g_adv->setAdvertisementData(g_advData);
   g_adv->setScanResponse(true);
   g_adv->setMinPreferred(0x06);
   g_adv->setMaxPreferred(0x12);   // advertise fairly often so phones find it quickly
@@ -188,3 +219,26 @@ void bleTick() {
 }
 
 bool bleActive() { return g_stackUp; }
+
+void bleSleep() {
+  if (!g_stackUp || !g_btPowered) return;
+  BLEDevice::stopAdvertising();
+  if (g_adv) g_adv->stop();
+  esp_bt_controller_disable();    // power the radio + modem down for real
+  g_btPowered = false;
+  BLE_DBG("bleSleep: BT controller off");
+}
+
+void bleWake() {
+  if (!g_stackUp || g_btPowered) return;
+  esp_bt_controller_enable(ESP_BT_MODE_BLE);   // radio back up
+  g_btPowered = true;
+  // Bluedroid doesn't always resume the GAP layer cleanly after a controller
+  // cycle, so push the advertisement data again before starting.
+  if (g_adv) g_adv->setAdvertisementData(g_advData);
+  if (g_server) g_server->getAdvertising()->start();
+  BLEDevice::startAdvertising();
+  BLE_DBG("bleWake: re-advertising as %s", BLE_DEVICE_NAME);
+}
+
+#endif  // SIM_BUILD

@@ -1,0 +1,53 @@
+name: battery
+version: 1
+author: FitnessAI Watch
+
+# Exercises the M7 battery monitor (power.cpp) end-to-end BEFORE the divider is
+# soldered. This is the one place the simulator is genuinely ahead of the
+# hardware: draining a real Li-ion from 4.2 V to 3.3 V to test the thresholds
+# takes hours and a bench supply. Here it is a slider.
+#
+# MAPPING — the slide pot spans the 3.3 V rail into GPIO3, and the firmware
+# multiplies by BATT_DIVIDER_RATIO (2.0), so:
+#     cell_mV  =  (value / 1023) * 3300 * 2
+#     value    =  cell_mV * 1023 / 6600
+# Thresholds from config.h: FULL 4200, USB-guess 4250, LOW 3500, CRIT 3400.
+#
+# BATT_INTERVAL_MS is 10000, so every change needs >10 s before it is sampled.
+# That is why this scenario is the slow one.
+steps:
+  - wait-serial: 'Boot complete'
+
+  # ── Healthy cell: 4.10 V (value 635) ──────────────────────────────────────
+  - set-control: { part-id: batt, name: value, value: 635 }
+  - delay: 12s
+  - write-serial: "batt\n"
+  - wait-serial: '[sim] batt valid=1 mv=41'    # 4100-4199 mV
+
+  # ── External power: 4.40 V (value 682), above the 4.25 V USB guess ────────
+  # With no PIN_USB_SENSE wired the firmware infers USB from "a resting cell
+  # cannot exceed 4.2 V". This proves that fallback fires.
+  - set-control: { part-id: batt, name: value, value: 682 }
+  - delay: 12s
+  - write-serial: "batt\n"
+  - wait-serial: 'label=USB'
+
+  # ── LOW warning: 3.45 V (value 535) ───────────────────────────────────────
+  # Sits inside the 100 mV band between CRIT (3400) and LOW (3500), so this
+  # asserts LOW is reached WITHOUT tripping the critical load shed.
+  - set-control: { part-id: batt, name: value, value: 535 }
+  - delay: 12s
+  - write-serial: "batt\n"
+  - wait-serial: 'label=LOW'
+
+  # ── Critical: 2.90 V (value 450) — radio must be shed ─────────────────────
+  # Deliberately far below the 3.4 V threshold rather than just under it: the
+  # point is to prove the shed happens, not to probe ADC accuracy at the edge.
+  - set-control: { part-id: batt, name: value, value: 450 }
+  - delay: 12s
+  - wait-serial: 'battery critical -> radio shed'
+
+  # The status screen must render the detail line without corrupting the panel.
+  - take-screenshot:
+      part-id: oled
+      save-to: shots/battery-critical.png

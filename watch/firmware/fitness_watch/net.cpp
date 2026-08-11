@@ -125,6 +125,14 @@ void wifiTick() {
   DBG("wifiTick: STA retry");
 }
 
+void wifiOff() {
+  // Idempotent — called every loop() while the battery is critical.
+  if (WiFi.getMode() == WIFI_OFF) return;
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  DBG("wifiOff: radio down");
+}
+
 const char *wifiIp() {
   static char ip[16];
   IPAddress a = WiFi.localIP();

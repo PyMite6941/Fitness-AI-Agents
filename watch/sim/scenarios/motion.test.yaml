@@ -1,0 +1,70 @@
+name: motion
+version: 1
+author: FitnessAI Watch
+
+# Drives the emulated MPU6050 to test the two things built on top of it: step
+# counting and auto-rotation. Both run through real I2C reads and the real
+# Adafruit_MPU6050 driver — only the physical motion is synthetic.
+#
+# UNITS: the Wokwi part's accelX/Y/Z controls are in g, which the driver
+# converts to m/s2 before the firmware sees them. If a future Wokwi release
+# switches the control to m/s2, every value below needs x9.81 and nothing else
+# changes.
+#
+# Step detection (the sketch): a step is counted when |accel| deviates from
+# 9.80665 m/s2 by more than 2.0, with a 250 ms debounce, and the signal must
+# fall back below the threshold before the next one counts.
+steps:
+  - wait-serial: 'Boot complete'
+
+  # Establish "at rest, screen up": 1 g on Z, nothing on X/Y. Without this the
+  # part starts at 0,0,0 — a magnitude of zero, which reads as 9.8 m/s2 of
+  # deviation and would sit permanently above the step threshold.
+  - set-control: { part-id: imu, name: accelX, value: 0 }
+  - set-control: { part-id: imu, name: accelY, value: 0 }
+  - set-control: { part-id: imu, name: accelZ, value: 1 }
+  - delay: 1s
+  - write-serial: "steps reset\n"
+  - wait-serial: '[sim] steps=0'
+
+  # ── Three deliberate "steps" ──────────────────────────────────────────────
+  # 1.6 g = 15.7 m/s2 = 5.9 above gravity, comfortably over the 2.0 threshold.
+  # Each peak is followed by a return to rest so the debounce arms again, and
+  # the 300 ms gaps clear the 250 ms lockout.
+  - set-control: { part-id: imu, name: accelZ, value: 1.6 }
+  - delay: 100ms
+  - set-control: { part-id: imu, name: accelZ, value: 1 }
+  - delay: 300ms
+
+  - set-control: { part-id: imu, name: accelZ, value: 1.6 }
+  - delay: 100ms
+  - set-control: { part-id: imu, name: accelZ, value: 1 }
+  - delay: 300ms
+
+  - set-control: { part-id: imu, name: accelZ, value: 1.6 }
+  - delay: 100ms
+  - set-control: { part-id: imu, name: accelZ, value: 1 }
+  - delay: 300ms
+
+  - write-serial: "steps\n"
+  - wait-serial: '[sim] steps=3'
+
+  # ── Debounce holds ────────────────────────────────────────────────────────
+  # A sustained shake with no return to rest must NOT keep incrementing: the
+  # firmware requires the signal to drop back under the threshold first.
+  - set-control: { part-id: imu, name: accelZ, value: 1.6 }
+  - delay: 2s
+  - write-serial: "steps\n"
+  - wait-serial: '[sim] steps=4'
+
+  # ── Auto-rotation ─────────────────────────────────────────────────────────
+  # Stand the watch on its side: gravity moves onto +X. atan2(-ay,-ax) = 180
+  # degrees, which the rotation table maps to R3. Needs the horizontal
+  # component over ORIENT_FLAT_MS2 (5.0) and 500 ms of hold before it commits.
+  - set-control: { part-id: imu, name: accelZ, value: 0 }
+  - set-control: { part-id: imu, name: accelX, value: 1 }
+  - wait-serial: 'orientation -> R3'
+
+  - take-screenshot:
+      part-id: oled
+      save-to: shots/rotated-r3.png
