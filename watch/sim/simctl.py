@@ -15,12 +15,13 @@ either wrong produces a sim that hangs with no output.
 
   1. -DSIM_BUILD=1  — swaps in the synthetic MAX30105 and drops BLE (Wokwi has no
                       Bluetooth controller to emulate). See firmware/.../sim.h.
-  2. CDCOnBoot=default (NOT =cdc, which the hardware build uses)
-                    — with CDC-on-boot enabled, `Serial` is the USB-CDC device.
-                      Wokwi's serial monitor listens on UART0, so every
-                      Serial.print would vanish and every scenario's
-                      `wait-serial` would time out. Disabling CDC-on-boot points
-                      `Serial` back at UART0, which the emulator does provide.
+  2. A separate output directory, so a simulator build never overwrites the
+                      artifacts you are about to flash to the real board.
+
+Serial: Wokwi does not deliver this firmware's Serial output to the CLI (see the
+FQBN_SIM comment below for what was measured). The scenarios that assert with
+`wait-serial` are kept because they document the intended behaviour, but only
+`visual.test.yaml` currently runs end to end.
 """
 
 import argparse
@@ -46,10 +47,21 @@ SKETCH = SIM_DIR.parent / "firmware" / "fitness_watch"
 BUILD = SIM_DIR / "build"
 SCENARIOS = SIM_DIR / "scenarios"
 
-# Hardware target, for reference — this is what gets flashed to the real watch.
+# Hardware target — this is what gets flashed to the real watch.
 FQBN_HW = "esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=huge_app"
-# Simulator target: identical except Serial is routed to UART0 (see docstring).
-FQBN_SIM = "esp32:esp32:esp32c3:CDCOnBoot=default,PartitionScheme=huge_app"
+# Simulator target: IDENTICAL to the hardware one, so the sim runs the same
+# build the watch does apart from -DSIM_BUILD=1.
+#
+# MEASURED, not assumed: Wokwi delivers NO serial for this firmware either way.
+# Both CDCOnBoot=cdc (Serial = USB Serial/JTAG) and CDCOnBoot=default
+# (Serial = UART0) produce exactly 0 bytes in --serial-log-file, with and
+# without a scenario, on both board-esp32-c3-devkitm-1 and the SuperMini part.
+# Not even the ROM boot banner appears. The firmware itself is fine — the OLED
+# draws and the buttons/IMU respond — so this is a limit of the emulator's C3
+# serial, not of the build. Anything asserting with `wait-serial` therefore
+# cannot run yet; see scenarios/visual.test.yaml for the screenshot-based
+# approach that does work.
+FQBN_SIM = FQBN_HW
 
 LIBS = [
     "U8g2",
@@ -127,13 +139,33 @@ def cmd_build(args) -> int:
 
 
 # ── wokwi ────────────────────────────────────────────────────────────────────
+WOKWI_CLI_VERSION = "v0.26.1"
+WOKWI_CLI_ASSET = "wokwi-cli-win-x64.exe"   # this project's machine
+
+
 def wokwi_cmd() -> list:
-    """wokwi-cli, preferring a global install and falling back to npx."""
+    """Path to wokwi-cli, downloading the release binary if it is missing.
+
+    Note there is NO `wokwi-cli` package on npm — `npx wokwi-cli` 404s. It ships
+    only as a standalone binary from GitHub releases (or wokwi.com/ci/install.sh).
+    """
     local = shutil.which("wokwi-cli")
     if local:
         return [local]
-    npx = need("npx", "Install Node.js from https://nodejs.org/")
-    return [npx, "--yes", "wokwi-cli"]
+
+    tools = SIM_DIR / ".wokwi-tools"
+    exe = tools / "wokwi-cli.exe"
+    if not exe.exists():
+        url = ("https://github.com/wokwi/wokwi-cli/releases/download/"
+               f"{WOKWI_CLI_VERSION}/{WOKWI_CLI_ASSET}")
+        print(f"downloading wokwi-cli {WOKWI_CLI_VERSION} (one time, ~45 MB)...")
+        tools.mkdir(exist_ok=True)
+        curl = shutil.which("curl")
+        if not curl:
+            die(f"curl not found. Download {url} to {exe} manually.")
+        if run([curl, "-sL", "-o", str(exe), url]) != 0 or not exe.exists():
+            die(f"download failed. Get {url} manually and save it to {exe}.")
+    return [str(exe)]
 
 
 def check_token():

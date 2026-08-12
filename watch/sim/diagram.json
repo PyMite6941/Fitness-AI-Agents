@@ -4,7 +4,7 @@
   "editor": "wokwi",
   "parts": [
     {
-      "type": "board-esp32-c3-devkitm-1",
+      "type": "board-aitewinrobot-esp32c3-supermini",
       "id": "esp",
       "top": 0,
       "left": 0,
@@ -73,24 +73,24 @@
   "connections": [
     [ "esp:7", "oled:DATA", "green", [ "v-40", "h120" ] ],
     [ "esp:8", "oled:CLK", "gold", [ "v-30", "h130" ] ],
-    [ "esp:3V3.1", "oled:3V3", "red", [ "v-60", "h100" ] ],
-    [ "esp:GND.1", "oled:GND", "black", [ "v-50", "h110" ] ],
+    [ "esp:3V3", "oled:3V3", "red", [ "v-60", "h100" ] ],
+    [ "esp:GND", "oled:GND", "black", [ "v-50", "h110" ] ],
 
     [ "esp:7", "imu:SDA", "green", [ "v20", "h140" ] ],
     [ "esp:8", "imu:SCL", "gold", [ "v30", "h150" ] ],
-    [ "esp:3V3.1", "imu:VCC", "red", [ "v40", "h160" ] ],
-    [ "esp:GND.1", "imu:GND", "black", [ "v50", "h170" ] ],
+    [ "esp:3V3", "imu:VCC", "red", [ "v40", "h160" ] ],
+    [ "esp:GND", "imu:GND", "black", [ "v50", "h170" ] ],
 
-    [ "esp:3V3.1", "btnA:1.l", "red", [ "v90", "h-200" ] ],
+    [ "esp:3V3", "btnA:1.l", "red", [ "v90", "h-200" ] ],
     [ "btnA:2.l", "rA:1", "green", [ "v0" ] ],
     [ "rA:2", "esp:4", "green", [ "v0", "h40" ] ],
 
-    [ "esp:3V3.1", "btnB:1.l", "red", [ "v170", "h-200" ] ],
+    [ "esp:3V3", "btnB:1.l", "red", [ "v170", "h-200" ] ],
     [ "btnB:2.l", "rB:1", "blue", [ "v0" ] ],
     [ "rB:2", "esp:5", "blue", [ "v0", "h40" ] ],
 
-    [ "esp:3V3.1", "batt:VCC", "red", [ "v260", "h20" ] ],
-    [ "esp:GND.1", "batt:GND", "black", [ "v270", "h-20" ] ],
+    [ "esp:3V3", "batt:VCC", "red", [ "v260", "h20" ] ],
+    [ "esp:GND", "batt:GND", "black", [ "v270", "h-20" ] ],
     [ "batt:SIG", "esp:3", "violet", [ "v-20", "h-60" ] ]
   ],
   "dependencies": {}
