@@ -110,20 +110,32 @@ Sync screen, button-A navigation, **step counting** (three commanded shakes of
 the emulated IMU produced exactly `3 steps`), and heart-rate **detection** off
 the synthetic waveform.
 
-Three things that need attention, none of them yet attributable to firmware
-rather than emulator:
+### The bug it found: the OLED write starves everything else
 
-- **Short taps get dropped.** A 150 ms press is sometimes missed. The main loop
-  blocks ~82 ms writing a full 128×64 frame at 100 kHz, so with a 50 ms debounce
-  a short press can be sampled too few times to register. Use ≥300 ms presses in
-  scenarios; on hardware, be aware that a fast tap during a repaint can be lost.
-- **HR reads ~24 bpm when 72 is commanded** — almost exactly one third. Either
-  the synthetic waveform's dicrotic bump is confusing `checkForBeat()`, or the
-  emulator's bursty timing (those 82 ms display stalls) drops the samples
-  between beats. Needs serial to tell the two apart.
-- **Display mute did not blank the panel.** Either the double-tap was one of the
-  dropped presses, or Wokwi's SSD1306 ignores the display-off command. Also
-  needs serial to distinguish.
+`u8g2.sendBuffer()` pushes a full 128×64 frame over I2C at 100 kHz — a **~90 ms
+blocking call** — and `loop()` runs it every 200 ms. **Roughly 45% of the time
+the main loop is inside that write, sampling nothing.** This is not a simulator
+artifact: the real watch uses the same clock and the same 5 fps redraw.
+
+Three symptoms, one cause:
+
+| Symptom | Measured |
+|---|---|
+| Short button presses dropped | 150 ms presses unreliable; 400 ms presses 4/4 |
+| **Double-tap mute unreachable** | **no** press width works — 100/150/200/250/300 ms all fail |
+| HR reads ~⅓ of the true rate | 24 bpm against a synthetic 72 |
+
+The double-tap is the sharpest one. It is crushed between needing *long* presses
+to be observed at all and needing both releases inside `BTN_DOUBLE_TAP_MS`. Ruled
+out the alternative explanation (Wokwi ignoring the display-off command) by
+checking whether the panel *froze*: `enterStandby()` stops `drawScreen()`, so a
+muted panel cannot keep ticking — and it kept ticking.
+
+Full measurements, reasoning and the recommended fixes (MAX30105 FIFO for HR;
+hold-instead-of-double-tap for the mute) are in `lab-notes/`.
+
+Also measured: **boot takes ~4.8 s**, not the 2 s `BOOT_BAR_MS` implies — the 27
+bar frames each cost ~90 ms to draw on top of their delay.
 
 ### Test hooks
 

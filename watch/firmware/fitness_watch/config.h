@@ -78,7 +78,17 @@
 // Double-tap window for button B (GPIO5): two presses inside this time = the
 // display-only screen-off toggle. Vitals (HR sampling, steps, BLE/WiFi) keep
 // running — this is display mute, not sleep. Same double press wakes it back.
-#define BTN_DOUBLE_TAP_MS    400
+//
+// RAISED FROM 400 ms after simulator testing showed the gesture was
+// UNREACHABLE at 400: no press width worked (100/150/200/250/300 ms all failed).
+// A full 128x64 frame at 100 kHz blocks loop() for ~90 ms every 200 ms, so a
+// press has to be long (>=250 ms) just to be observed, while its release can
+// then be confirmed up to ~140 ms late (debounce + one blind window). Two taps
+// could not fit in 400 ms. See lab-notes/2026-08-12-findings.md.
+//
+// NOT YET VERIFIED ON HARDWARE OR IN THE SIM — Smart App Control is currently
+// blocking the RISC-V compiler, so this value has not been rebuilt and re-run.
+#define BTN_DOUBLE_TAP_MS    700
 
 // Wiring polarity. The firmware reads "pressed" on either edge — pick the one
 // that matches how the buttons are physically wired:

@@ -1,0 +1,58 @@
+name: exp-double
+version: 1
+author: FitnessAI Watch
+
+# EXPERIMENT: find the double-tap timing envelope, if one exists.
+# B works (single long press returns home), so the mute gesture alone is failing.
+# It is squeezed between two constraints: presses must be LONG to survive the
+# ~82 ms display-write blind spot, but both RELEASES must land inside
+# BTN_DOUBLE_TAP_MS (400 ms). Sweep the press width and see if any value works.
+# A successful mute blanks the panel (lit -> 0); the next attempt would unmute,
+# so read the sequence, not one frame.
+steps:
+  - delay: 6s
+  - take-screenshot: { part-id: oled, save-to: shots/d0-base.png }
+
+  # A: 150 ms presses, releases 200 ms apart
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 150ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 50ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 150ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 2s
+  - take-screenshot: { part-id: oled, save-to: shots/d1-150ms.png }
+
+  # B: 200 ms presses, releases 240 ms apart
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 200ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 40ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 200ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 2s
+  - take-screenshot: { part-id: oled, save-to: shots/d2-200ms.png }
+
+  # C: 250 ms presses, releases 280 ms apart
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 250ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 30ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 250ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 2s
+  - take-screenshot: { part-id: oled, save-to: shots/d3-250ms.png }
+
+  # D: 100 ms presses, releases 150 ms apart - the fastest a human could do
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 100ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 50ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 100ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 2s
+  - take-screenshot: { part-id: oled, save-to: shots/d4-100ms.png }

@@ -1,0 +1,29 @@
+name: exp-frozen
+version: 1
+author: FitnessAI Watch
+
+# EXPERIMENT: is the display MUTE actually happening, with Wokwi simply
+# ignoring the SSD1306 display-off command?
+#
+# enterStandby() sets standby=true, and loop() then returns before drawScreen().
+# So if standby was entered, the panel content FREEZES even if it never blanks.
+# The home screen has a ticking seconds counter, so two shots 4 s apart are
+# pixel-identical if and only if drawing stopped.
+steps:
+  - delay: 6s
+  - take-screenshot: { part-id: oled, save-to: shots/f1.png }
+  - delay: 4s
+  - take-screenshot: { part-id: oled, save-to: shots/f2.png }   # control: must DIFFER
+
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 250ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 30ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 250ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+
+  - delay: 2s
+  - take-screenshot: { part-id: oled, save-to: shots/f3.png }
+  - delay: 4s
+  - take-screenshot: { part-id: oled, save-to: shots/f4.png }   # identical to f3 => muted

@@ -149,7 +149,13 @@ static void orientScreen(float ax, float ay, float az, float gx, float gy, float
 }
 
 // ── Buttons (debounced, tap vs hold) ─────────────────────────────────────────
-static const uint32_t BTN_DEBOUNCE_MS = 50;    // stable read before trusting a level change
+// 25 ms, not 50: every edge costs this much latency, and BOTH edges of BOTH
+// taps sit inside the double-tap window. A tactile switch settles in under
+// ~5 ms, so 25 ms is still generous, and halving it buys 50 ms of margin in a
+// gesture that measurement showed had none. See lab-notes/2026-08-12-findings.md.
+// UNVERIFIED: not rebuilt since (the RISC-V compiler is blocked by Smart App
+// Control). If bounce ever shows up as phantom taps, put this back to 50.
+static const uint32_t BTN_DEBOUNCE_MS = 25;    // stable read before trusting a level change
 static const uint32_t BTN_HOLD_MS    = 600;    // press longer than this counts as a HOLD
 
 // struct ButtonState is declared in config.h — see the note there about the
@@ -229,6 +235,23 @@ static void pollHeartRate() {
   // 1000+ reads/s with an empty finger) hammers the shared bus and makes the
   // SSD1306 frame address drift/corrupt. 1 ms wall = at most ~1 kHz; a finger
   // only needs ~200-400 Hz sampling for beat detection, and no finger needs none.
+  //
+  // KNOWN DEFECT (found in the simulator, applies equally to hardware):
+  // sendBuffer() pushes a full 128x64 frame over I2C at 100 kHz, which BLOCKS
+  // loop() for ~90 ms, and it runs every 200 ms. So ~45% of the time no IR
+  // samples are taken at all. At 72 bpm the systolic peak is only ~58 ms wide,
+  // so peaks land inside that blind window and are missed — and one missed beat
+  // doubles the measured interval, halving the reported rate. The simulator
+  // reads 24 bpm against a synthetic 72. Worse, beats are timestamped with
+  // millis() at READ time rather than capture time, so bursty reading skews the
+  // intervals even when a peak is not missed.
+  //
+  // The fix is to drain the MAX30105's hardware FIFO (32 samples at the
+  // configured 400 Hz) via check()/available()/getFIFOIR() instead of sampling
+  // the latest value: a 90 ms stall then costs nothing, because the samples are
+  // still queued in the sensor with their true spacing. Not done yet — it needs
+  // a rebuild to test, and the toolchain is currently blocked.
+  // See lab-notes/2026-08-12-findings.md.
   static uint32_t lastReadMs = 0;
   uint32_t nMs = millis();
   if (nMs - lastReadMs < 5) return;
@@ -442,8 +465,13 @@ static void drawSync() {
   snprintf(line, sizeof(line), "ssid %s", settings().ssid);
   u8g2.drawStr(2, 50, line);
 
-  u8g2.drawHLine(0, 57, OLED_WIDTH);
-  u8g2.drawStr(2, 63, "A hold = home; press B x2 = mute");
+  // The 5x7 font is 5 px per glyph, so the panel fits 25 characters at x=2.
+  // The old hint here was 32 characters (160 px): it was clipped mid-glyph and
+  // "= mute" never appeared at all. Caught by screenshotting the simulator.
+  // The divider also moved up 2 px — at y=57 it collided with the ascenders of
+  // a baseline-63 line, which occupies y=57..63.
+  u8g2.drawHLine(0, 55, OLED_WIDTH);
+  u8g2.drawStr(2, 63, "A hold=home  Bx2=mute");
   u8g2.sendBuffer();
 }
 

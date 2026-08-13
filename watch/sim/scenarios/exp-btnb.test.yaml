@@ -1,0 +1,55 @@
+name: exp-btnb
+version: 1
+author: FitnessAI Watch
+
+# EXPERIMENT. Button B did nothing in two separate runs — neither the
+# double-tap display mute NOR the single-press return-to-home fired. Two
+# candidate causes:
+#
+#   H1. B is electrically dead in the sim (diagram wiring / GPIO5).
+#   H2. B works, but both gestures need presses too short to survive the
+#       ~82 ms display-write blind spot.
+#
+# The discriminator is a SINGLE, LONG B press. A single tap must return to the
+# home screen once BTN_DOUBLE_TAP_MS (400 ms) expires with no second tap.
+#   - lands on HOME  -> H2: B works, the gestures are the problem
+#   - stays put      -> H1: B is dead
+#
+# A is used first to move off HOME, so "went home" is unambiguous.
+steps:
+  - delay: 6s
+  - take-screenshot: { part-id: oled, save-to: shots/b0-home.png }
+
+  # A tap (400 ms, known reliable) -> STATUS, so we are NOT on HOME.
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 400ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 800ms
+  - take-screenshot: { part-id: oled, save-to: shots/b1-status.png }
+
+  # Single long B press. Expect: HOME, ~400 ms after release.
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 600ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 1500ms
+  - take-screenshot: { part-id: oled, save-to: shots/b2-after-single.png }
+
+  # Second single long B press, from HOME. Should be a no-op (already home).
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 600ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 1500ms
+  - take-screenshot: { part-id: oled, save-to: shots/b3-after-single2.png }
+
+  # Now the tightest double-tap that still gives each press real dwell time:
+  # 300 ms press, 60 ms gap, 300 ms press. The two RELEASES are 360 ms apart,
+  # just inside the 400 ms window. If B works at all, this must mute the panel.
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 300ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 60ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 300ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 2s
+  - take-screenshot: { part-id: oled, save-to: shots/b4-double.png }

@@ -1,0 +1,71 @@
+name: exp-timing
+version: 1
+author: FitnessAI Watch
+
+# EXPERIMENT (lab-notes/2026-08-12-findings.md), not a regression test.
+#
+# Two questions the visual run left open:
+#   Q1. How long does boot actually take? BOOT_BAR_MS says 2000, but the bar was
+#       still at 73% at t=4s. Sample every second to find the real number.
+#   Q2. Are 150 ms button presses being DROPPED, or is navigation broken?
+#       Repeat with 400 ms presses. If every tap lands, it is a sampling
+#       problem, not a state-machine problem.
+#
+# Screen order is {HOME, HR, STEPS, SYNC, STATUS}; tap A steps BACKWARDS:
+#   HOME -> STATUS -> SYNC -> STEPS -> HR -> HOME
+steps:
+  # ── Q1: boot timeline ─────────────────────────────────────────────────────
+  # NOTE: do NOT screenshot before ~2s. Wokwi renders the panel server-side via
+  # rsvg-convert, and an SSD1306 that has not been initialised yet produces an
+  # empty document -> "XML does not have <svg> root" and the whole run aborts.
+  - delay: 2500ms
+  - take-screenshot: { part-id: oled, save-to: shots/t025s.png }
+  - delay: 1s
+  - take-screenshot: { part-id: oled, save-to: shots/t035s.png }
+  - delay: 1s
+  - take-screenshot: { part-id: oled, save-to: shots/t045s.png }
+  - delay: 1s
+  - take-screenshot: { part-id: oled, save-to: shots/t055s.png }
+  - delay: 1s
+  - take-screenshot: { part-id: oled, save-to: shots/t065s.png }
+  - delay: 1s
+  - take-screenshot: { part-id: oled, save-to: shots/t075s.png }
+
+  # ── Q2: four 400 ms taps. Every one should advance exactly one screen. ────
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 400ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 800ms
+  - take-screenshot: { part-id: oled, save-to: shots/tap1.png }   # expect STATUS
+
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 400ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 800ms
+  - take-screenshot: { part-id: oled, save-to: shots/tap2.png }   # expect SYNC
+
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 400ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 800ms
+  - take-screenshot: { part-id: oled, save-to: shots/tap3.png }   # expect STEPS
+
+  - set-control: { part-id: btnA, name: pressed, value: 1 }
+  - delay: 400ms
+  - set-control: { part-id: btnA, name: pressed, value: 0 }
+  - delay: 800ms
+  - take-screenshot: { part-id: oled, save-to: shots/tap4.png }   # expect HR
+
+  # ── Q3: double-tap B for display mute, with presses long enough to register
+  # but still inside BTN_DOUBLE_TAP_MS (400 ms between the two RELEASES).
+  # This is the tightest gesture in the UI: each press needs ~100 ms of debounce
+  # latency, and both releases must land inside a 400 ms window.
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 200ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 120ms
+  - set-control: { part-id: btnB, name: pressed, value: 1 }
+  - delay: 200ms
+  - set-control: { part-id: btnB, name: pressed, value: 0 }
+  - delay: 1500ms
+  - take-screenshot: { part-id: oled, save-to: shots/mute.png }   # expect BLANK
