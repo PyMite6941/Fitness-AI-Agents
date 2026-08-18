@@ -86,9 +86,30 @@ See "Wiring the LCD1602" in `watch/README.md`.
 
 ---
 
+## When the local compiler is blocked (Smart App Control)
+
+`simctl.py build` needs the local riscv32 toolchain, and Windows **Smart App
+Control** blocks it (`An Application Control policy has blocked this file`).
+There is no exclusion list for SAC, and turning it off is irreversible. The way
+around it is the cloud build, which needs neither a local toolchain nor a token:
+
+1. Run **Build Watch Firmware** from the repo's Actions tab (or push to
+   `watch/firmware/**`).
+2. Download the **`fitness-watch-fitness_watch_sim-esp32c3`** artifact -- that is
+   the `-DSIM_BUILD=1` variant, the one Wokwi needs (BLE off, battery on GPIO3).
+   The plain `fitness_watch` artifact is the HARDWARE build and will hang in the
+   emulator on `bleStart()`, which Wokwi cannot service.
+3. Create a project at <https://wokwi.com/projects/new/esp32-c3>, paste this
+   directory's `diagram.json` into the diagram tab, and upload the artifact's
+   `fitness_watch.ino.merged.bin`.
+
+That runs the real firmware in the browser with no token and no local compiler.
+
+---
+
 ## Getting a token
 
-`build` and `lint` work offline. Running the simulator needs a free Wokwi CI
+`lint` works offline; `build` needs the local toolchain (see above). Running the simulator needs a free Wokwi CI
 token:
 
 1. Sign in at <https://wokwi.com/>
