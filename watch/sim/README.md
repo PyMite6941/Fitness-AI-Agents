@@ -1,8 +1,8 @@
 # FitnessAI Watch — Simulator
 
 Runs the **real watch firmware** on an emulated ESP32-C3, with an emulated
-SSD1306, MPU6050, buttons and a battery slider. No hardware, no soldering, no
-USB cable.
+SSD1306, **LCD1602**, MPU6050, buttons and a battery slider. No hardware, no
+soldering, no USB cable.
 
 This is not a mock of the watch. Wokwi emulates the RISC-V core and the I2C bus,
 and the thing it executes is the same `.bin` that would be flashed to the board.
@@ -23,8 +23,9 @@ python simctl.py run       # interactive session    (needs a token)
 | Piece | In the simulator | Verified |
 |---|---|---|
 | ESP32-C3 core, flash, NVS, timers | **emulated** — real instructions | ✅ boots, `millis()` tracks real time |
-| I2C bus (GPIO 7/8) | **emulated** — real transactions | ✅ OLED + IMU both respond |
+| I2C bus (GPIO 7/8) | **emulated** — real transactions | ✅ OLED/LCD + IMU both respond |
 | SSD1306 128x64 OLED | **emulated**, and screenshottable | ✅ every screen renders |
+| **LCD1602 (I2C backpack)** | **emulated**, and screenshottable | ✅ every screen renders |
 | MPU6050 accel/gyro | **emulated**, driven by scenario controls | ✅ shaking it counts steps |
 | Buttons on GPIO 4/5 | **emulated**, with 330 Ω series resistors | ✅ taps change screens |
 | **Serial** | **not delivered** — see below | ❌ 0 bytes, always |
@@ -67,6 +68,21 @@ are honest about it:
 - **BLE** is stubbed to no-ops in `ble.cpp`. Calling into a Bluetooth controller
   that does not exist hangs the emulator with no output, which is indistinguishable
   from a firmware bug.
+
+### Both display parts are wired, one is driven
+
+`diagram.json` carries **both** the SSD1306 (`oled`, `0x3C`) and the LCD1602
+(`lcd`, `0x27`) on the same emulated GPIO 7/8 bus, mirroring the real hardware
+where either panel can be soldered in. Which one the firmware talks to is decided
+by `DISPLAY_TYPE` in `config.h` — so `python simctl.py build` + `test` exercises
+whichever display is configured. Point `visual.test.yaml`'s `part-id` at `lcd`
+or `oled` to match. (The unused panel just sits on the bus and stays blank.)
+
+Note the LCD is wired to `esp:5V`, not `3V3`, to mirror the hardware: a 5 V
+HD44780 module fed 3.3 V goes dark and stops answering on I2C entirely. The
+emulator does not model that — it will happily drive the panel either way — so
+the diagram matches the real wiring on purpose, to keep the two from drifting.
+See "Wiring the LCD1602" in `watch/README.md`.
 
 ---
 

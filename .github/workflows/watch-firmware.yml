@@ -19,10 +19,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sketch:
-          - fitness_watch   # the product firmware
-          - watch_diag      # hardware component diagnostic
-          - screen_measure  # display size / driver identification
+        include:
+          # `path` is under watch/firmware/; `name` must be artifact-safe (no '/'),
+          # and GitHub Actions expressions have no replace() to derive one from it.
+          - path: fitness_watch
+            name: fitness_watch          # the product firmware
+          - path: watch_diag
+            name: watch_diag             # hardware component diagnostic
+          - path: screen_measure
+            name: screen_measure         # display size / driver identification
+          - path: i2c_scan/general_scan
+            name: i2c_general_scan       # definitive I2C finder (all GPIO pairs)
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +52,8 @@ jobs:
             "Adafruit MPU6050" \
             "Adafruit Unified Sensor" \
             "Adafruit BusIO" \
-            "ArduinoJson@7.4.3"
+            "ArduinoJson@7.4.3" \
+            "LiquidCrystal I2C"   # DISPLAY_TYPE=DISPLAY_LCD1602 needs this
 
       - name: Compile (export flashable binaries)
         run: |
@@ -57,19 +65,19 @@ jobs:
             --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc,PartitionScheme=huge_app \
             --export-binaries \
             --warnings all \
-            watch/firmware/${{ matrix.sketch }}
+            watch/firmware/${{ matrix.path }}
 
       - name: Collect binaries
         run: |
           mkdir -p out
           # the build subdir name encodes the FQBN + options, so glob it
-          cp watch/firmware/${{ matrix.sketch }}/build/*/*.bin out/
-          echo "--- flashable binaries (${{ matrix.sketch }}) ---"
+          cp watch/firmware/${{ matrix.path }}/build/*/*.bin out/
+          echo "--- flashable binaries (${{ matrix.name }}) ---"
           ls -la out
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fitness-watch-${{ matrix.sketch }}-esp32c3
+          name: fitness-watch-${{ matrix.name }}-esp32c3
           path: out/**
           if-no-files-found: error

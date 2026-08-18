@@ -14,14 +14,21 @@
  * Adafruit BusIO).
  */
 
+// config.h FIRST — DISPLAY_TYPE is defined there, and the conditional includes
+// below select which display library to pull in.
+#include "config.h"
+
 #include <Wire.h>
+#if DISPLAY_TYPE == DISPLAY_OLED
 #include <U8g2lib.h>
+#else
+#include <LiquidCrystal_I2C.h>
+#endif
 #include <MAX30105.h>
 #include <heartRate.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <esp_sleep.h>
-#include "config.h"
 #include "net.h"   // settings, clock, WiFi, pairing portal, sync
 #include "ble.h"   // BLE control peripheral (pair / time / commands)
 #include "power.h" // battery monitor (cell voltage -> % / USB detection)
@@ -38,13 +45,167 @@ int g_simFingerForce = -1;   // -1 = follow sim.h's schedule
 // logs, leaving only errors and one-liners. Leave on while bring-up is ongoing.
 #define DBG(fmt, ...) do { if (DEBUG_SERIAL) Serial.printf("[watch] " fmt "\n", ##__VA_ARGS__); } while (0)
 
+// ── I2C bus probing ──────────────────────────────────────────────────────────
+// Every panel/sensor on this build shares one bus, so "is it even there?" is the
+// first question for any bring-up problem. These helpers answer it from the
+// firmware itself, so a dark screen no longer means flashing a separate scanner
+// sketch — the boot log already says what is on the wire.
+
+// Does a device ACK its address on the CURRENT Wire pins?
+static bool i2cAck(uint8_t addr) {
+  Wire.beginTransmission(addr);
+  return Wire.endTransmission() == 0;
+}
+
+// Log every address that answers. Returns how many did.
+//
+// A count of 0 with nothing wired is normal; a count in the dozens means SDA is
+// stuck LOW (miswired, or a module powered off while its pull-ups drag the line)
+// and EVERY address "answers" — the floating-line phantom that made the earlier
+// hand-run scans report an LCD at 0x27 that was never there.
+static int i2cScanLog(const char *tag) {
+  int found = 0;
+  Serial.printf("[watch] I2C scan (%s) SDA=%d SCL=%d @%d Hz:\n",
+                tag, PIN_I2C_SDA, PIN_I2C_SCL, I2C_CLOCK_HZ);
+  for (uint8_t addr = 0x08; addr <= 0x77; addr++) {
+    if (!i2cAck(addr)) continue;
+    found++;
+    const char *what = "?";
+    if (addr == OLED_ADDR)              what = "SSD1306 OLED";
+    else if (addr == MPU6050_ADDR)      what = "MPU6050";
+    else if (addr == MAX30105_ADDR)     what = "MAX30102/05";
+    else if ((addr >= 0x20 && addr <= 0x27) ||
+             (addr >= 0x38 && addr <= 0x3F)) what = "PCF8574 (LCD backpack)";
+    Serial.printf("    0x%02X  %s\n", addr, what);
+  }
+  if (found == 0) Serial.println("    (nothing answered - check power + SDA/SCL wiring)");
+  else if (found > 8) Serial.println("    !! too many hits: SDA is stuck LOW, these are phantoms");
+  return found;
+}
+
 // Full-buffer, hardware-I2C SSD1306. This 0.96" panel needs the standard NONAME
 // init. (ALT0 made the sparse measurement pattern look OK but interleaves the
 // rows with real text -> overlapping lines.) See OLED_INIT_ALT0 in config.h.
-#if OLED_INIT_ALT0
-U8G2_SSD1306_128X64_ALT0_F_HW_I2C u8g2(U8G2_R0, /*reset=*/U8X8_PIN_NONE);
+#if DISPLAY_TYPE == DISPLAY_OLED
+  #if OLED_INIT_ALT0
+  U8G2_SSD1306_128X64_ALT0_F_HW_I2C u8g2(U8G2_R0, /*reset=*/U8X8_PIN_NONE);
+  #else
+  U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /*reset=*/U8X8_PIN_NONE);
+  #endif
 #else
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /*reset=*/U8X8_PIN_NONE);
+// The panel is constructed at RUNTIME, not statically, because its I2C address
+// is discovered rather than assumed: PCF8574 backpacks ship as either the 'T'
+// part (0x20-0x27, usually 0x27) or the 'AT' part (0x38-0x3F, usually 0x3F), and
+// which one you have is not printed on the board. lcdFindAddr() probes for it.
+static LiquidCrystal_I2C *lcd = nullptr;
+static uint8_t lcdAddr = 0;      // address it actually answered on (0 = absent)
+static bool    lcdOk   = false;  // false = no panel on the bus; all draws no-op
+
+// Write one line of text to the character LCD, padded/truncated to LCD_COLS so
+// a shorter string never leaves ghost characters from the previous frame.
+//
+// No-ops when the panel is absent. That matters for more than tidiness: each
+// write to a missing device costs a full I2C timeout, and a 2-row frame is ~40
+// of them — enough blocking to stall beat detection and drop button presses.
+static void lcdRow(uint8_t row, const char *s) {
+  if (!lcdOk || !lcd) return;
+  char buf[LCD_COLS + 1];
+  int n = (int)strlen(s);
+  if (n > LCD_COLS) n = LCD_COLS;
+  memset(buf, ' ', LCD_COLS);
+  memcpy(buf, s, (size_t)n);
+  buf[LCD_COLS] = 0;
+  lcd->setCursor(0, row);
+  lcd->print(buf);
+}
+#endif
+
+// Panel init / power — one wrapper for both backends so setup() and the
+// standby logic don't care which panel is configured.
+#if DISPLAY_TYPE == DISPLAY_OLED
+static void dispBegin() {
+  u8g2.setI2CAddress(OLED_ADDR << 1);   // U8g2 uses the 8-bit address form
+  u8g2.begin();
+}
+static void dispReinit() { u8g2.begin(); }
+static void dispPower(bool on) {
+  u8g2.setPowerSave(on ? 0 : 1);
+}
+#else
+// Find the backpack. LCD_I2C_ADDR from config.h is tried first (so an explicit
+// setting always wins), then both PCF8574 address blocks. Returns 0 if nothing
+// on the bus looks like a backpack.
+//
+// The SSD1306's 0x3C/0x3D sit INSIDE the PCF8574AT block (0x38-0x3F) and must be
+// skipped: on a bus carrying both panels — which is exactly what the Wokwi
+// diagram and a bench setup mid-swap look like — a blind sweep would return the
+// OLED's address and then drive an SSD1306 as if it were an HD44780. Nothing
+// would appear on either panel and the address in the log would look correct,
+// which is the worst kind of bug to hit at a deadline.
+static bool lcdAddrUsable(uint8_t a) {
+  return a != 0x3C && a != 0x3D;    // SSD1306 primary / alternate
+}
+
+static uint8_t lcdFindAddr() {
+  if (i2cAck(LCD_I2C_ADDR)) return LCD_I2C_ADDR;
+  for (uint8_t a = 0x20; a <= 0x27; a++)                            // PCF8574T
+    if (lcdAddrUsable(a) && i2cAck(a)) return a;
+  for (uint8_t a = 0x38; a <= 0x3F; a++)                            // PCF8574AT
+    if (lcdAddrUsable(a) && i2cAck(a)) return a;
+  return 0;
+}
+
+// Probe, then (re)build and initialise the panel. Safe to call repeatedly — it
+// is the hot-plug path as well as the boot path.
+static bool lcdTryBegin() {
+  uint8_t a = lcdFindAddr();
+  if (!a) { lcdOk = false; return false; }
+  if (lcd && a != lcdAddr) { delete lcd; lcd = nullptr; }   // moved address = rebuild
+  if (!lcd) lcd = new LiquidCrystal_I2C(a, LCD_COLS, LCD_ROWS);
+  if (!lcd) { lcdOk = false; return false; }
+  lcdAddr = a;
+  // NOTE: use begin(cols, rows), NOT init(). This library's init() calls
+  // Wire.begin() with NO arguments, which resets the ESP32-C3's I2C bus to the
+  // board's DEFAULT pins (GPIO 8/9) instead of our config's 7/8. begin() skips
+  // that Wire re-init, so the shared bus stays on PIN_I2C_SDA/SCL.
+  lcd->begin(LCD_COLS, LCD_ROWS);
+  lcd->backlight();
+  lcd->clear();
+  lcdOk = true;
+  return true;
+}
+
+// Everything worth checking when the panel does not answer, printed where the
+// person holding the board will actually see it.
+static void lcdReportMissing() {
+  Serial.printf("[watch] LCD1602 NOT found on I2C (SDA=%d SCL=%d). Check, in order:\n",
+                PIN_I2C_SDA, PIN_I2C_SCL);
+  Serial.println("    1. VCC -> the board's 5V pin, NOT 3V3. A 5 V HD44780 module shows");
+  Serial.println("       nothing at 3.3 V: the backlight barely glows and the contrast");
+  Serial.println("       bias never reaches the segments. This is the usual cause of");
+  Serial.println("       'not even lit'. (See 'Wiring the LCD1602' in watch/README.md");
+  Serial.println("       for the pull-up caveat that comes with running the backpack at 5 V.)");
+  Serial.println("    2. GND -> GND, shared with the ESP32.");
+  Serial.println("    3. SDA/SCL on the backpack -> GPIO 7 / GPIO 8 (not swapped).");
+  Serial.println("    4. Backlight jumper present on the backpack.");
+  Serial.println("    5. Contrast pot: turn it until faint blocks appear on row 0.");
+  Serial.println("    The panel is re-probed every few seconds - fix the wiring and it");
+  Serial.println("    lights up on its own, no reflash needed.");
+}
+
+static void dispBegin() {
+  if (lcdTryBegin()) {
+    Serial.printf("[watch] LCD1602 %dx%d found at 0x%02X (SDA=%d SCL=%d)\n",
+                  LCD_COLS, LCD_ROWS, lcdAddr, PIN_I2C_SDA, PIN_I2C_SCL);
+  } else {
+    lcdReportMissing();
+  }
+}
+static void dispReinit() { lcdTryBegin(); }
+static void dispPower(bool on) {
+  if (!lcdOk || !lcd) return;
+  if (on) lcd->backlight(); else lcd->noBacklight();
+}
 #endif
 
 MAX30105 particleSensor;
@@ -60,6 +221,29 @@ static byte rateFilled = 0;      // how many slots hold a real reading (avoid av
 static uint32_t lastBeatMs = 0;
 static int beatAvg = 0;
 static bool fingerPresent = false;
+
+// ── MAX30105 LED power ───────────────────────────────────────────────────────
+// The IR LED is the sensor's whole power budget, and it only needs to be bright
+// while a pulse is actually being measured. Between readings it drops to a
+// proximity-detect level, which is enough to notice a finger arriving.
+static bool maxDimmed = false;        // true = IR running at MAX_LED_IR_IDLE
+static uint32_t lastFingerMs = 0;
+
+static void maxSetLeds(bool full) {
+  maxDimmed = !full;
+#if !SIM_BUILD
+  if (!maxOk) return;
+  particleSensor.setPulseAmplitudeRed(MAX_LED_RED);
+  particleSensor.setPulseAmplitudeIR(full ? MAX_LED_IR : MAX_LED_IR_IDLE);
+#endif
+}
+
+// The presence threshold has to track the LED current: reflected IR scales with
+// how hard the LED is driven, so a fixed 50000 would never be reached once the
+// LED is dimmed and a finger would go unnoticed forever.
+static long fingerThreshold() {
+  return maxDimmed ? MAX_FINGER_THRESH_IDLE : MAX_FINGER_THRESHOLD;
+}
 
 // Clear every derived HR value. Called when the finger leaves so a stale BPM
 // can't reappear the instant it comes back — the next reading starts from zero.
@@ -88,13 +272,19 @@ static const uint32_t STEP_DEBOUNCE_MS = 250;  // min gap between steps (caps ~2
 static int curRotation = 0;              // 0..3 -> U8G2_R0..R3
 static int rotCandidate = -1;            // rotation the sensor currently wants
 static uint32_t rotSinceMs = 0;          // when that candidate first appeared
+#if DISPLAY_TYPE == DISPLAY_OLED
 static const u8g2_cb_t *ROT_CBS[4] = {U8G2_R0, U8G2_R1, U8G2_R2, U8G2_R3};
+#endif
 
 static void applyRotation(int r) {
+  // LCD builds have no rotation support; orientScreen() is compiled out via
+  // ORIENT_ENABLE=0, so this is never reached — but it still needs to compile.
+#if DISPLAY_TYPE == DISPLAY_OLED
   if (r == curRotation) return;
   curRotation = r;
   u8g2.setDisplayRotation(ROT_CBS[r]);
   DBG("orientation -> R%d", r);
+#endif
 }
 
 static void orientScreen(float ax, float ay, float az, float gx, float gy, float gz) {
@@ -194,13 +384,28 @@ static Screen screen = SCREEN_BOOT;
 static uint32_t bootStartMs = 0;
 static bool pairShowToken = false;   // PAIR screen: show full token instead of steps
 
+// ── Display power state ──────────────────────────────────────────────────────
+// Declared up here, not next to enterStandby()/exitStandby() further down,
+// because pollAccelStep() above reads them for the optional wake-on-motion hook
+// and the Arduino builder only auto-forward-declares FUNCTIONS, never variables.
+static bool standby = false;            // true = panel is off (timeout or mute)
+static uint32_t lastActivityMs = 0;     // last button interaction
+static bool redrawNow = false;          // force a repaint on the next pass
+static void exitStandby();              // defined with the rest of the display code
+
 static void goScreen(Screen s) {
   screen = s;
   bootStartMs = millis();
+  // Repaint immediately rather than waiting out DRAW_INTERVAL_MS. This is what
+  // lets the redraw rate drop to 1 Hz without the UI feeling laggy: periodic
+  // repaints are only there for the clock, while anything the user actually
+  // triggered is drawn at once.
+  redrawNow = true;
 }
 
 // ── Loading screen ───────────────────────────────────────────────────────────
-static void drawLoading(uint8_t pct) {
+#if DISPLAY_TYPE == DISPLAY_OLED
+static void drawLoadingOled(uint8_t pct) {
   u8g2.clearBuffer();
 
   u8g2.setFont(u8g2_font_helvB12_tr);
@@ -222,6 +427,30 @@ static void drawLoading(uint8_t pct) {
   u8g2.drawStr((OLED_WIDTH - u8g2.getStrWidth(buf)) / 2, 63, buf);
 
   u8g2.sendBuffer();
+}
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
+
+// ── Loading screen (LCD) ─────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawLoadingLcd(uint8_t pct) {
+  char line[LCD_COLS + 1];
+  snprintf(line, sizeof(line), "FitnessAI  %u%%", pct);
+  lcdRow(0, line);
+
+  char bar[LCD_COLS + 1];
+  int fill = (int)((long)LCD_COLS * pct / 100);
+  for (int i = 0; i < LCD_COLS; i++) bar[i] = (i < fill) ? '#' : ' ';
+  bar[LCD_COLS] = 0;
+  lcdRow(1, bar);
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
+
+static void drawLoading(uint8_t pct) {
+#if DISPLAY_TYPE == DISPLAY_OLED
+  drawLoadingOled(pct);
+#else
+  drawLoadingLcd(pct);
+#endif
 }
 
 // ── Sensor polling ───────────────────────────────────────────────────────────
@@ -262,11 +491,21 @@ static void pollHeartRate() {
 #else
   long irValue = particleSensor.getIR();
 #endif
-  bool nowPresent = irValue > 50000;   // low IR = no finger on the sensor
+  bool nowPresent = irValue > fingerThreshold();   // low IR = no finger
 
   // Finger just left → drop every derived value rather than holding the last BPM.
   if (fingerPresent && !nowPresent) resetHeartRate();
   fingerPresent = nowPresent;
+
+  // LED duty management. Full current whenever a finger is there, and back down
+  // to proximity level once it has been gone a while. The delay stops the LED
+  // flapping between levels while a finger hovers around the threshold.
+  if (nowPresent) {
+    lastFingerMs = nMs;
+    if (maxDimmed) maxSetLeds(true);
+  } else if (MAX_IDLE_DIM && !maxDimmed && (nMs - lastFingerMs) > MAX_IDLE_AFTER_MS) {
+    maxSetLeds(false);
+  }
 
   // Only look for beats when there is actually a finger. On an empty sensor the
   // IR signal is noise, and checkForBeat() happily reports beats in noise.
@@ -333,9 +572,16 @@ static void pollAccelStep() {
   } else {
     aboveStepThreshold = false;
   }
+
+#if WAKE_ON_MOTION
+  // Off by default — see WAKE_ON_MOTION in config.h for why a bare threshold
+  // cannot tell a wrist-raise from a stride.
+  if (standby && dynamic > WAKE_MOTION_MS2) exitStandby();
+#endif
 }
 
 // ── Home screen ──────────────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_OLED
 // Placeholder clock (counts seconds since boot) so we can see the loop is alive.
 // Real time arrives in a later milestone (Wi-Fi sync). HR + steps are live.
 static void footerText(char *out, size_t len) {
@@ -383,8 +629,55 @@ static void drawHome() {
 
   u8g2.sendBuffer();
 }
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
+
+// ── Home screen (LCD) ────────────────────────────────────────────────────────
+// Mirrors the OLED home: a title + battery status bar, the clock, and a footer
+// with live HR + steps. A 1602 has only two rows, so those pack onto row 1;
+// a 2004 spreads the same info across four labelled rows.
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawHomeLcd() {
+  uint32_t s = millis() / 1000;
+  int hh = (s / 3600) % 24, mm = (s / 60) % 60, ss = s % 60;
+  char line[LCD_COLS + 1];
+
+  if (LCD_ROWS < 3) {
+    // 1602: two rows. Row 0 = clock + battery, row 1 = HR + steps.
+    snprintf(line, sizeof(line), "%02d:%02d:%02d %s", hh, mm, ss, battLabel());
+    lcdRow(0, line);
+
+    if (!maxOk || !mpuOk) {
+      snprintf(line, sizeof(line), "%s%s missing", !maxOk ? "HR " : "", !mpuOk ? "IMU" : "");
+    } else if (!fingerPresent || beatAvg <= 0) {
+      snprintf(line, sizeof(line), "-- bpm  %lu st", (unsigned long)stepCount);
+    } else {
+      snprintf(line, sizeof(line), "%d bpm  %lu st", beatAvg, (unsigned long)stepCount);
+    }
+    lcdRow(1, line);
+    return;
+  }
+
+  // 2004: one labelled row per item — status bar, clock, HR, steps.
+  snprintf(line, sizeof(line), "FitnessAI  %s", battLabel());
+  lcdRow(0, line);
+
+  snprintf(line, sizeof(line), "%02d:%02d:%02d", hh, mm, ss);
+  lcdRow(1, line);
+
+  if (!maxOk) snprintf(line, sizeof(line), "HR   sensor missing");
+  else if (!fingerPresent) snprintf(line, sizeof(line), "HR   no finger --");
+  else if (beatAvg <= 0) snprintf(line, sizeof(line), "HR   measuring...");
+  else snprintf(line, sizeof(line), "HR   %d bpm", beatAvg);
+  lcdRow(2, line);
+
+  if (!mpuOk) snprintf(line, sizeof(line), "IMU  missing");
+  else snprintf(line, sizeof(line), "STEPS %lu", (unsigned long)stepCount);
+  lcdRow(3, line);
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
 // ── Heart-rate screen ────────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_OLED
 static void drawHR() {
   u8g2.clearBuffer();
 
@@ -407,8 +700,25 @@ static void drawHR() {
 
   u8g2.sendBuffer();
 }
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
+
+// ── Heart-rate screen (LCD) ──────────────────────────────────────────────────
+// Mirrors the OLED HR screen: title + big BPM + a status hint.
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawHrLcd() {
+  char line[LCD_COLS + 1];
+  lcdRow(0, "HEART RATE");
+
+  if (!maxOk) snprintf(line, sizeof(line), "-- BPM  sensor off");
+  else if (!fingerPresent) snprintf(line, sizeof(line), "-- BPM  no finger");
+  else if (beatAvg <= 0) snprintf(line, sizeof(line), "-- BPM  measuring");
+  else snprintf(line, sizeof(line), "%d BPM  live", beatAvg);
+  lcdRow(1, line);
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
 // ── Steps screen ─────────────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_OLED
 static void drawSteps() {
   u8g2.clearBuffer();
 
@@ -426,8 +736,21 @@ static void drawSteps() {
 
   u8g2.sendBuffer();
 }
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
+
+// ── Steps screen (LCD) ───────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawStepsLcd() {
+  char line[LCD_COLS + 1];
+  lcdRow(0, "STEPS");
+
+  snprintf(line, sizeof(line), "%lu  total", (unsigned long)stepCount);
+  lcdRow(1, line);
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
 // ── Sensor-status screen ─────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_OLED
 static void drawStatus() {
   u8g2.clearBuffer();
 
@@ -442,8 +765,29 @@ static void drawStatus() {
 
   u8g2.sendBuffer();
 }
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
+
+// ── Sensor-status screen (LCD) ───────────────────────────────────────────────
+// Mirrors the OLED status screen: title + per-sensor lines + battery detail.
+// A 1602 only has two rows, so the sensors share them (one per row).
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawStatusLcd() {
+  char line[LCD_COLS + 1];
+  if (LCD_ROWS >= 3) {
+    lcdRow(0, "SENSORS");
+    lcdRow(1, maxOk ? "MAX30105: OK" : "MAX30105: MISSING");
+    lcdRow(2, mpuOk ? "MPU6050:  OK" : "MPU6050:  MISSING");
+    if (LCD_ROWS >= 4) { snprintf(line, sizeof(line), "%s", battDetail()); lcdRow(3, line); }
+  } else {
+    // 1602: sensors only, one per row.
+    lcdRow(0, maxOk ? "MAX30105: OK" : "MAX30105: MISSING");
+    lcdRow(1, mpuOk ? "MPU6050:  OK" : "MPU6050:  MISSING");
+  }
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
 // ── Sync / network screen ────────────────────────────────────────────────────
+#if DISPLAY_TYPE == DISPLAY_OLED
 static void drawSync() {
   u8g2.clearBuffer();
 
@@ -474,8 +818,40 @@ static void drawSync() {
   u8g2.drawStr(2, 63, "A hold=home  Bx2=mute");
   u8g2.sendBuffer();
 }
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
+
+// ── Sync / network screen (LCD) ──────────────────────────────────────────────
+// Mirrors the OLED sync screen: wifi state + IP, queued/sent counts, last HTTP
+// result and the SSID.
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawSyncLcd() {
+  char line[LCD_COLS + 1];
+
+  if (LCD_ROWS < 3) {
+    // 1602: two rows — wifi state + queue.
+    snprintf(line, sizeof(line), "wifi %s %s", wifiConnected() ? "UP" : "off", wifiIp());
+    lcdRow(0, line);
+    snprintf(line, sizeof(line), "q %d sent %lu", syncQueued(), (unsigned long)syncUploaded());
+    lcdRow(1, line);
+    return;
+  }
+
+  lcdRow(0, "SYNC");
+  snprintf(line, sizeof(line), "wifi %s  %s", wifiConnected() ? "UP" : "off", wifiIp());
+  lcdRow(1, line);
+
+  snprintf(line, sizeof(line), "queued %d  sent %lu", syncQueued(), (unsigned long)syncUploaded());
+  lcdRow(2, line);
+
+  if (LCD_ROWS >= 4) {
+    snprintf(line, sizeof(line), "http %d  ssid %s", syncLastHttp(), settings().ssid);
+    lcdRow(3, line);
+  }
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
 // ── Pairing portal screen (shown whenever the watch is not paired) ───────────
+#if DISPLAY_TYPE == DISPLAY_OLED
 static void drawPair() {
   u8g2.clearBuffer();
 
@@ -515,28 +891,66 @@ static void drawPair() {
   u8g2.drawStr(2, 63, pairingBusy() ? "connecting..." : "waiting...");
   u8g2.sendBuffer();
 }
+#endif  // DISPLAY_TYPE == DISPLAY_OLED
 
-// ── Screen-off toggle (double-press button B = GPIO5) ────────────────────────
-// A double-press of GPIO5 turns ONLY the OLED off. Every vitals process — HR
-// sampling, step counting, BLE/WiFi — keeps running; this is a display mute, not
-// a system sleep. Double-press GPIO5 again brings the screen straight back.
-static bool standby = false;
-static void drawScreen();   // defined below; used by exitStandby to repaint
+// ── Pairing portal screen (LCD) ──────────────────────────────────────────────
+// Mirrors the OLED pairing screen: instructions in order + live connection state.
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawPairLcd() {
+  char line[LCD_COLS + 1];
 
-static void enterStandby() {
+  if (pairShowToken) {
+    lcdRow(0, "DEVICE TOKEN");
+    const char *tok = settings().token;
+    if (!tok[0]) tok = "(none set)";
+    snprintf(line, sizeof(line), "%s", tok);
+    lcdRow(1, line);
+    return;
+  }
+
+  if (LCD_ROWS < 3) {
+    // 1602: two rows — SSID + live state.
+    snprintf(line, sizeof(line), "wifi %s", pairingSsid());
+    lcdRow(0, line);
+    lcdRow(1, pairingBusy() ? "connecting..." : "browser 192.168.4.1");
+    return;
+  }
+
+  lcdRow(0, "PAIR THIS WATCH");
+  snprintf(line, sizeof(line), "wifi: %s", pairingSsid());
+  lcdRow(1, line);
+  if (LCD_ROWS >= 3) lcdRow(2, "browser 192.168.4.1");
+  if (LCD_ROWS >= 4) lcdRow(3, pairingBusy() ? "connecting..." : "enter token fit_...");
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
+
+// ── Display power ────────────────────────────────────────────────────────────
+// The OLED is the largest continuous load after the radio (~12 mA), and a watch
+// spends nearly all of its life unobserved — so it blanks itself after
+// DISPLAY_TIMEOUT_MS and on a double-press of button B.
+//
+// This is display-only. HR sampling, step counting, the battery monitor, BLE and
+// cloud sync all keep running while the panel is dark; see loop(), where only
+// the draw step is gated.
+// State lives higher up the file — see the "Display power state" block.
+static void drawScreen();               // defined below; used to repaint on wake
+
+static void enterStandby(const char *why) {
+  if (standby) return;
   standby = true;
-  u8g2.noDisplay();                 // SSD1306 display OFF command
-  DBG("SCREEN OFF (vitals still monitored)");
+  dispPower(false);                 // SSD1306 display OFF / LCD backlight OFF
+  DBG("display off (%s) — vitals, sync and BLE keep running", why);
 }
 
 static void exitStandby() {
+  lastActivityMs = millis();
+  if (!standby) return;
   standby = false;
   // Wake with the display ON command — no full begin() re-init flash here. The
   // periodic displaySelfHeal() already re-syncs a corrupt panel if one develops.
-  u8g2.setPowerSave(0);             // SSD1306 display ON command
-  u8g2.clearBuffer();
-  drawScreen();
-  DBG("SCREEN ON");
+  dispPower(true);                  // SSD1306 display ON / LCD backlight ON
+  redrawNow = true;
+  DBG("display on");
 }
 
 // ── Navigation ───────────────────────────────────────────────────────────────
@@ -546,6 +960,19 @@ static void handleButtons() {
   updateButton(btnB, PIN_BTN_B, now);
 
   if (screen == SCREEN_BOOT) return;
+
+  // Any interaction counts as activity and restarts the blank timeout.
+  if (btnA.tapEdge || btnB.tapEdge || btnA.holdEdge || btnB.holdEdge)
+    lastActivityMs = now;
+
+  // First press on a dark panel just wakes it — it must NOT also navigate.
+  // Otherwise reaching for the watch to check the time silently changes screen.
+  if (standby) {
+    btnA.tapEdge = btnB.tapEdge = false;
+    btnA.holdEdge = btnB.holdEdge = false;
+    exitStandby();
+    return;
+  }
 
   // Hold button A (GPIO4) → back to the home screen (unchanged quick-hold).
   if (btnA.holdEdge) {
@@ -574,7 +1001,7 @@ static void handleButtons() {
       bFirstTapMs = 0;                    // ── DOUBLE press → toggle screen
       bCooldownMs = nowTap + BTN_DOUBLE_TAP_MS;  // swallow the rest of the gesture
       if (standby) exitStandby();
-      else         enterStandby();
+      else         enterStandby("double-tap");
       return;
     }
     bFirstTapMs = nowTap;                 // ── first trip of a possible double
@@ -601,6 +1028,13 @@ static void handleButtons() {
 }
 
 void setup() {
+  // Clock down BEFORE Serial.begin(), so the UART divider is computed against
+  // the frequency we are actually going to run at. Doing it afterwards garbles
+  // the console. 80 MHz is the floor for the WiFi radio, and this workload — a
+  // 1 Hz UI and two slow I2C sensors — is nowhere near compute-bound. The C3's
+  // APB clock stays at 80 MHz regardless, so I2C timing is untouched.
+  setCpuFrequencyMhz(CPU_FREQ_MHZ);
+
   Serial.begin(115200);
   delay(200);
   settingsLoad();
@@ -612,8 +1046,8 @@ void setup() {
 
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(I2C_CLOCK_HZ);
-  u8g2.setI2CAddress(OLED_ADDR << 1);   // U8g2 uses the 8-bit address form
-  u8g2.begin();
+  i2cScanLog("boot");   // one line per device actually on the wire
+  dispBegin();   // SSD1306 (U8g2) or HD44780 (LiquidCrystal_I2C) — see config.h
 
 #if SIM_BUILD
   // No MAX30105 part exists in Wokwi, so there is no device to configure —
@@ -624,8 +1058,13 @@ void setup() {
   maxOk = particleSensor.begin(Wire, I2C_CLOCK_HZ, MAX30105_ADDR);
   if (maxOk) {
     // powerLevel, sampleAverage, ledMode(2=Red+IR), sampleRate, pulseWidth, adcRange
-    particleSensor.setup(0x1F, 4, 2, 400, 411, 4096);
-    DBG("MAX30105 init OK (addr 0x%02X)", MAX30105_ADDR);
+    particleSensor.setup(MAX_LED_IR, 4, 2, 400, 411, 4096);
+    // Kill the RED LED outright. Mode 2 pulses Red and IR, but this firmware
+    // only ever reads the IR channel (getIR()) — it computes heart rate, not
+    // SpO2 — so Red was burning ~6 mA continuously to produce a number nothing
+    // reads. Turn it back on only if SpO2 is ever implemented.
+    maxSetLeds(true);
+    DBG("MAX30105 init OK (addr 0x%02X, red off)", MAX30105_ADDR);
   } else {
     Serial.println("[watch] MAX30105 NOT found on I2C bus");
   }
@@ -641,12 +1080,19 @@ void setup() {
     Serial.println("[watch] MPU6050 NOT found on I2C bus");
   }
 
-  // Sensor init above (MAX begin with FAST, MPU with its own speed) may have
-  // silently changed the shared I2C clock behind our back. Re-assert the value
-  // from config.h so the OLED ALWAYS draws at the stabilised speed. Without
-  // this, the display flickers/blanks because it is being written at 400 kHz
-  // on this board's marginal bus.
+  // Sensor init above is hostile to the display on a custom pin pair:
+  //   - MAX30105::begin()  -> _i2cPort->begin()   = Wire.begin() with NO args
+  //   - Adafruit I2CDevice  -> _wire->begin()     = Wire.begin() with NO args
+  // On the ESP32-C3, Wire.begin() with no arguments resets the bus to the
+  // board's DEFAULT pins (8/9). Both run above, so the shared bus has silently
+  // moved off PIN_I2C_SDA/SCL by the time the boot loading bar draws — the panel
+  // gets nothing and stays dark (an LCD backlight latches on, but no text
+  // arrives). Re-assert the pins AND the clock so the display is driven where
+  // the wiring actually is, then re-init the panel: on the wrong pins its own
+  // controller setup may have been half-written, and re-running it is cheap.
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(I2C_CLOCK_HZ);
+  dispReinit();
 
   // Animate the loading bar over BOOT_BAR_MS, then hand off to the right start.
   const int steps = 26;
@@ -690,10 +1136,17 @@ void setup() {
   if (BLE_ENABLE && !DISPLAY_RADIO_TEST) bleStart();   // BLE is always on — the controller link to phone/web
 
   bootStartMs = millis();
-  Serial.println("[watch] Boot complete");
+  lastActivityMs = millis();   // start the blank timeout from a lit screen
+  Serial.printf("[watch] Boot complete (cpu %u MHz, display timeout %d ms)\n",
+                (unsigned)getCpuFrequencyMhz(), DISPLAY_TIMEOUT_MS);
 }
 
 // ── Serial command console (bring-up aid) ────────────────────────────────────
+// drawScreen() is defined below this point; the `d` command repaints after
+// recovering a panel, so declare it explicitly rather than relying on the
+// Arduino builder's auto-prototypes (which skip static functions).
+static void drawScreen();
+
 static void handleSerialCmd() {
   static String buf;
   while (Serial.available()) {
@@ -703,9 +1156,20 @@ static void handleSerialCmd() {
       if (buf.length()) {
         Serial.print("[watch] cmd > "); Serial.println(buf);
         if (buf == "h") {
-          Serial.println("  p  = status line\n  s  = force sync now\n  t  = print device token\n  r  = reboot\n  clear = wipe pairing + reboot to portal");
+          Serial.println("  p  = status line\n  s  = force sync now\n  t  = print device token\n  i2c = scan the I2C bus\n  d  = display state (+ retry a missing panel)\n  r  = reboot\n  clear = wipe pairing + reboot to portal");
         } else if (buf == "p") {
           logWatch();
+        } else if (buf == "i2c") {
+          i2cScanLog("manual");
+        } else if (buf == "d") {
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+          Serial.printf("[watch] LCD %dx%d ok=%d addr=0x%02X\n",
+                        LCD_COLS, LCD_ROWS, (int)lcdOk, lcdAddr);
+          if (!lcdOk) { if (lcdTryBegin()) { Serial.printf("[watch] now up at 0x%02X\n", lcdAddr); drawScreen(); } else lcdReportMissing(); }
+#else
+          Serial.printf("[watch] OLED %dx%d addr=0x%02X ack=%d\n",
+                        OLED_WIDTH, OLED_HEIGHT, OLED_ADDR, (int)i2cAck(OLED_ADDR));
+#endif
         } else if (buf == "t") {
           const char *tok = settings().token;
           Serial.printf("[watch] token: %s\n", tok[0] ? tok : "(none set)");
@@ -770,6 +1234,17 @@ static void handleSerialCmd() {
 // can repaint the current frame immediately instead of leaving a blank flash.
 static void drawScreen() {
   Screen s = screen;
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+  switch (s) {
+    case SCREEN_HOME:   drawHomeLcd();   break;
+    case SCREEN_HR:     drawHrLcd();     break;
+    case SCREEN_STEPS:  drawStepsLcd();  break;
+    case SCREEN_SYNC:   drawSyncLcd();   break;
+    case SCREEN_STATUS: drawStatusLcd(); break;
+    case SCREEN_PAIR:   drawPairLcd();   break;
+    default: break;
+  }
+#else
   switch (s) {
     case SCREEN_HOME:   drawHome();   break;
     case SCREEN_HR:     drawHR();     break;
@@ -779,6 +1254,7 @@ static void drawScreen() {
     case SCREEN_PAIR:   drawPair();   break;
     default: break;
   }
+#endif
 }
 
 // Self-heal the display. At 100 kHz a full 128x64 frame ties up the I2C bus for
@@ -792,18 +1268,37 @@ static void displaySelfHeal() {
   uint32_t now = millis();
   if (now - lastHealMs < DISPLAY_SELF_HEAL_MS) return;
   lastHealMs = now;
+#if DISPLAY_TYPE == DISPLAY_OLED
   u8g2.begin();
+#else
+  // LCD: HD44780 has no address-desync state to recover from, so a healthy panel
+  // is left alone — re-sending the init sequence every 5 s would just flicker it.
+  // An ABSENT panel is re-probed instead, which is what makes a wiring or power
+  // fix take effect on its own: plug the backpack into 5V and it comes up within
+  // one heal interval, no reset and no reflash.
+  if (!lcdOk) {
+    if (lcdTryBegin()) {
+      Serial.printf("[watch] LCD1602 appeared at 0x%02X - display live\n", lcdAddr);
+    } else {
+      return;   // nothing to repaint into
+    }
+  }
+#endif
   drawScreen();
 }
 
 void loop() {
-  // Screen-off (standby) is a display-only mute — vitals keep getting polled
-  // every iteration below. Nothing blocks here; the double-press toggle comes
-  // through handleButtons(). The only difference is the draw step is skipped.
+  // Screen-off is a DISPLAY mute, nothing more. Everything below runs whether
+  // the panel is lit or dark; only the draw step at the bottom is gated.
+  //
+  // It used to `return` here, which meant blanking the screen also stopped the
+  // serial console, the BLE state beacon, WiFi upkeep AND cloud sync — so a
+  // muted watch quietly banked readings forever and never uploaded them. That
+  // was survivable when the only way to blank the panel was a deliberate
+  // double-tap; with an automatic timeout it would have been a data-loss bug.
   pollHeartRate();    // sampled every iteration — beat timing needs the resolution
   pollAccelStep();
   handleButtons();
-  if (standby) return;   // screen off: skip serial/net/draw work this tick
   handleSerialCmd();
 
   uint32_t now = millis();
@@ -832,11 +1327,29 @@ void loop() {
     pairingLoop();   // keep an already-started portal alive (BLE-apply grace)
   }
 
+  // Blank the panel once it has been ignored for long enough.
+  if (DISPLAY_TIMEOUT_MS > 0 && !standby &&
+      (now - lastActivityMs) >= (uint32_t)DISPLAY_TIMEOUT_MS) {
+    enterStandby("timeout");
+  }
+
+  // Everything below touches the panel, so it is skipped while dark. That
+  // matters for displaySelfHeal() in particular: it calls u8g2.begin(), and the
+  // SSD1306 init sequence ends with the display ON — running it during standby
+  // would light the screen back up every DISPLAY_SELF_HEAL_MS.
+  if (standby) return;
+
   displaySelfHeal();
 
+  // Repaint at DRAW_INTERVAL_MS (1 Hz — nothing on screen changes faster than
+  // the seconds counter), or immediately when something the user did changed
+  // it. The old unconditional 5 fps spent ~45% of every second inside a
+  // blocking 90 ms I2C frame write, which is what starved button sampling and
+  // heart-rate detection.
   static uint32_t lastDrawMs = 0;
-  if (now - lastDrawMs >= 200) {   // ~5 fps; a 100 kHz frame is slow, so half the
-    lastDrawMs = now;              // redraw rate cuts bus exposure in half
+  if (redrawNow || now - lastDrawMs >= DRAW_INTERVAL_MS) {
+    redrawNow = false;
+    lastDrawMs = now;
     drawScreen();
   }
 }

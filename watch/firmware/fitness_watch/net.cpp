@@ -106,7 +106,17 @@ const char *clockIso(time_t t) {
 void wifiSetup(const char *ssid, const char *pass) {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
-  WiFi.setSleep(false);   // keep the radio hot while syncing (battery tuning is M7)
+  // Modem sleep ON. This was the single most expensive line in the firmware:
+  // setSleep(false) pins the radio awake between packets, which costs ~70-80 mA
+  // CONTINUOUSLY for the entire time the watch is associated — more than every
+  // other component put together. With sleep enabled the radio wakes on the
+  // AP's DTIM beacons instead.
+  //
+  // Nothing here needs the radio hot. The watch only ever makes OUTBOUND
+  // requests (a batched POST every 5 minutes); transmits wake the radio anyway,
+  // so throughput and reliability are unchanged. It accepts no inbound
+  // connections in station mode, so the extra inbound latency costs nothing.
+  WiFi.setSleep(true);
   WiFi.begin(ssid, pass);
   DBG("wifiSetup(%s)", ssid);
 }
@@ -264,6 +274,10 @@ static void handleSave() {
   g_backendCheckMs = 0;
 
   // STA connect while the AP stays up so the phone can watch progress.
+  // setSleep(false) is deliberate HERE and only here: pairing is a few seconds
+  // long with a user staring at a status page, and running AP + STA together is
+  // exactly the case where dozing the radio makes the portal feel broken. The
+  // steady-state path in wifiSetup() enables modem sleep.
   WiFi.setAutoReconnect(true);
   WiFi.setSleep(false);
   WiFi.begin(s.ssid, s.pass);

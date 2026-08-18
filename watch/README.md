@@ -46,14 +46,17 @@ watch-archive/
 | Part | Role | Bus / pins | I2C addr |
 |---|---|---|---|
 | **ESP32-C3 SuperMini** | MCU + Wi-Fi | — | — |
-| **SSD1306 128×64 OLED** | display | I2C (shared) | `0x3C` |
+| **SSD1306 128×64 OLED** *(default)* | display | I2C (shared) | `0x3C` |
+| **LCD1602 + PCF8574 backpack** *(alternative)* | display | I2C (shared, same pins) — **VCC on 5V** | `0x27`/`0x3F` (auto-detected) |
 | **MPU6050** | accel/gyro → steps | I2C (shared) | `0x68` |
 | **MAX30102** | heart rate / SpO₂ | I2C (shared) | `0x57` |
 | 2 × tactile buttons | navigation | GPIO (active-high) | — |
 | **NEO-6M GPS** *(optional)* | route tracking | UART1 | — |
 | Battery + divider *(optional)* | charge level | ADC1 | — |
 
-All three I2C devices share **one two-wire bus** — critical on the pin-starved C3.
+All I2C devices share **one two-wire bus** — critical on the pin-starved C3. You pick
+the display in `config.h` (`DISPLAY_TYPE`): either the SSD1306 OLED *or* the
+LCD1602, wired to the **same** SDA/SCL pins. See [Wiring the LCD1602](#wiring-the-lcd1602).
 
 ---
 
@@ -61,7 +64,7 @@ All three I2C devices share **one two-wire bus** — critical on the pin-starved
 
 | Signal | GPIO | Why this pin |
 |---|---:|---|
-| I2C **SCL** | 8 | I2C idles HIGH, so using this strapping pin is safe at boot. (Onboard LED may flicker — harmless.) Shared by OLED + MAX30105 + MPU6050. |
+| I2C **SCL** | 8 | I2C idles HIGH, so using this strapping pin is safe at boot. (Onboard LED may flicker — harmless.) Shared by OLED/LCD + MAX30105 + MPU6050. |
 | I2C **SDA** | 7 | Non-strapping; moved off the old GPIO 9 so only one strapping pin (8) is used for I2C. Shared bus, same as SCL. |
 | MAX30105 **INT** | −1 | Unwired — firmware polls the sensor every loop() instead of using the interrupt line. |
 | MPU6050 **INT** | −1 | Unwired — same, polling only. |
@@ -89,6 +92,185 @@ a magnetometer) are unused.
 
 **To change wiring:** edit `config.h` only. Every GPIO is `#define`d there; the rest of the
 firmware never hard-codes a pin. Set any optional pin to `-1` to disable it.
+
+---
+
+## Wiring the LCD1602
+
+The LCD1602 (HD44780 with a **PCF8574 I2C backpack**) replaces the OLED **on the same
+two I2C wires** — GPIO 7 (SDA) and GPIO 8 (SCL). No extra pins needed. Only one of the
+two displays is installed at a time (both would work on the bus, but the firmware drives
+whichever `DISPLAY_TYPE` says).
+
+### The four wires
+
+Your module has a **16-pin header** along the top and the backpack soldered across it,
+leaving **4 pins on the side**. You wire *only those 4*. The 16 are already connected to
+the PCF8574 by the backpack — see [what the 16 pins do](#what-the-16-pin-header-does) if
+you're curious, but you never touch them.
+
+**On the ESP32-C3 SuperMini** (`config.h`: `PIN_I2C_SDA 7`, `PIN_I2C_SCL 8`):
+
+| LCD1602 backpack pin | → | ESP32-C3 SuperMini | Notes |
+|---|---|---|---|
+| `GND` | → | `GND` | Do this one **first**. Any GND pin on the board works. |
+| `VCC` | → | `5V` | **5 V, not 3V3.** See below. The `5V` pin is live whenever USB is plugged in. |
+| `SDA` | → | `GPIO 7` | Data. Labelled `7` on the silkscreen. |
+| `SCL` | → | `GPIO 8` | Clock. Labelled `8`. |
+
+The backpack's 4 pins are usually printed in the order **`GND` `VCC` `SDA` `SCL`** —
+check the silkscreen rather than assuming, because a few batches use `VCC GND SDA SCL`
+and swapping those two is the one mistake that can kill the module.
+
+### Why 5 V (this was the "not even lit" bug)
+
+An HD44780 module built for 5 V shows **nothing** at 3.3 V: the backlight LED sits behind
+a series resistor sized for 5 V so it barely glows, and the contrast bias never gets high
+enough to drive the segments. On I2C the backpack then doesn't answer at all, so the
+firmware can't even see it. An earlier version of this file said to use 3V3 — that was
+wrong, and it's what kept the panel dark.
+
+**The catch that comes with 5 V:** the backpack pulls SDA and SCL up to *its own* VCC, so
+at 5 V those two lines idle at 5 V while the C3's GPIOs are 3.3 V parts (absolute max
+≈ 3.6 V). Pick one before leaving it powered for long:
+
+| Option | What to do | Trade-off |
+|---|---|---|
+| **Remove the pull-ups** *(recommended)* | Desolder the two resistors marked `472` (4.7 kΩ) on the backpack. The ESP32's internal pull-ups then drive the bus. | Free, permanent, keeps one bus. Fine at 100 kHz with short wires — which is what `I2C_CLOCK_HZ` is set to. |
+| **Level shifter** | Put a BSS138 4-channel module between the C3 and the backpack: LV → `3V3`, HV → `5V`, and run SDA/SCL through it. | Textbook-correct, no soldering on the LCD. Costs a part and two more jumpers. |
+| **Direct, as-is** | Nothing. | Works, and plenty of people run it this way — but it *is* out of spec and stresses GPIO 7/8 over time. Fine to prove the panel works; don't leave it. |
+
+### Powering both rails from the USB-C port alone
+
+Nothing to build. On this board the **5V pin is USB VBUS passed straight through, with no
+OR-ing diode** (see [Powering the board from a battery](#powering-the-board-from-a-battery)),
+so plugging in the USB-C makes the 5V pin live at ~5 V. The **3V3 pin** is the onboard
+**ME6211 LDO** (500 mA) fed from that same VBUS, so it comes up at the same moment. Both
+rails are powered by the one cable.
+
+The two rails do **not** compete, which is the point of putting the LCD on 5V:
+
+| Rail | Source | What draws from it | Budget |
+|---|---|---|---|
+| `5V` | USB VBUS direct | LCD backlight + HD44780 + PCF8574 — **~25 mA** | limited by the USB port (500 mA min) |
+| `3V3` | ME6211 LDO off VBUS | ESP32-C3 (~40–55 mA idle, **300 mA Wi-Fi TX peaks**), MPU6050, MAX30105 | LDO max **500 mA** |
+
+Moving the LCD to 5V takes its backlight current *off* the LDO instead of adding to it — the
+3V3 rail has more headroom this way, not less. Worst case (Wi-Fi transmitting, backlight on)
+is roughly **330 mA total** against a 500 mA USB port. Comfortable.
+
+Three practical notes:
+
+- **Use a decent supply.** A phone charger brick beats an unpowered hub or a long thin cable —
+  VBUS sag shows up as a dim backlight and unreadable contrast before it shows up as a crash.
+  You want **≥ 4.7 V** measured at the board's 5V pin under load.
+- **Never feed the 5V pin from anything else while USB-C is plugged in.** No diode means the
+  two sources collide. USB-only is automatically safe.
+- **If the 5V pin measures 0 V**, your clone populated a diode/jumper the reference design
+  doesn't. Then either run the LCD at 3V3 and wind the contrast pot up (dim but sometimes
+  legible), or power the backpack from a separate USB supply with **grounds tied together**.
+
+### Powering the LCD from a separate 5 V supply
+
+If the board's `5V` pin can't drive the panel — a dead pin on your clone, or you're running
+the ESP32 from a battery where no 5 V rail exists — the backpack can take 5 V from anywhere.
+A USB charger with a sacrificial USB-A cable is the easiest source: **red = +5 V,
+black = GND**. A power bank, a bench supply or an MB102 breadboard PSU all work the same way.
+
+```
+   5 V supply (charger / power bank / bench PSU)
+     +5V ──────────────► LCD backpack VCC
+     GND ──────┬───────► LCD backpack GND
+               └───────► ESP32-C3 GND pin      ◄── THE COMMON GROUND. Not optional.
+
+   ESP32-C3 GPIO 7 ────► LCD backpack SDA
+   ESP32-C3 GPIO 8 ────► LCD backpack SCL
+   ESP32-C3 powered separately over its own USB-C
+```
+
+Three rules, in order of how badly it goes wrong if you skip them:
+
+1. **Tie the grounds together.** I2C signalling is referenced to ground; two supplies with
+   no shared GND means SDA/SCL have no reference, the bus reads garbage or nothing at all,
+   and current can find its way back through the signal pins. This is the step people skip
+   and then spend an evening debugging.
+2. **Do NOT connect the external 5 V to the board's `5V` pin.** That pin is USB VBUS with no
+   OR-ing diode — feeding it while the USB-C is plugged in collides two supplies and can
+   destroy the board or the host port. External 5 V goes to the *backpack's* VCC only.
+3. **The pull-up caveat still applies** — the backpack pulls SDA/SCL to its 5 V rail
+   regardless of where that rail comes from. Same mitigations as above (remove the two `472`
+   resistors, or use a level shifter).
+
+A separate supply also removes the LCD's ~25 mA from the USB port's budget entirely, which
+is useful if you're on a weak port and seeing VBUS sag.
+
+### Making sure the wires are actually connected
+
+The firmware tells you this now — you don't need a multimeter to get an answer. Flash it,
+open the serial monitor at **115200**, and read the boot log:
+
+```
+[watch] I2C scan (boot) SDA=7 SCL=8 @100000 Hz:
+    0x27  PCF8574 (LCD backpack)
+    0x68  MPU6050
+[watch] LCD1602 16x2 found at 0x27 (SDA=7 SCL=8)
+```
+
+You can re-run that scan any time by typing **`i2c`** into the serial monitor, or **`d`**
+to print display state and retry a panel that wasn't found. Read the result like this:
+
+| What the scan says | What it means | Fix |
+|---|---|---|
+| `0x27` (or `0x3F`, or anything in `0x20-0x27` / `0x38-0x3F`) listed | Backpack is powered and both data wires are good. | Nothing — if the screen is still blank it's **contrast**, see below. |
+| `0x68` listed but no backpack address | The bus itself works (the MPU proves SDA/SCL are fine) — the LCD alone is unpowered or its 4 wires aren't landing. | Check `VCC` is on **5V** and `GND` is shared. Re-seat the backpack's 4 jumpers. |
+| `(nothing answered)` | No device at all — the bus is broken, not just the LCD. | SDA/SCL swapped, or a dead GND. Verify GPIO 7 → `SDA` and GPIO 8 → `SCL`, not reversed. |
+| `!! too many hits: SDA is stuck LOW` | SDA is shorted to GND, or a module is half-powered and dragging the line. | Unplug modules one at a time until the count drops. |
+
+Two checks the scan can't make for you:
+
+- **Backlight jumper.** The two-pin jumper at the corner of the backpack must be fitted,
+  or the backlight never lights no matter how good the wiring is.
+- **Contrast pot.** The blue trimmer on the backpack. If the address shows up in the scan
+  but the screen is blank or solid-blocks, turn the pot slowly through its range — there's
+  a narrow band where text becomes readable. Do this with the firmware running.
+
+**If you'd rather check with a multimeter:** measure between the backpack's `VCC` and
+`GND` pins with USB plugged in — you want **~5 V** (≈4.7 V is normal). Then continuity
+(beep) from GPIO 7's silkscreen pad to the backpack's `SDA` pin, and GPIO 8 to `SCL`.
+With power **off**, SDA-to-GND and SCL-to-GND must *not* beep; if either does, that line
+is shorted.
+
+The panel is re-probed every `DISPLAY_SELF_HEAL_MS` (5 s), so **you can fix wiring with
+the watch running** — reconnect the wire and the screen comes up on its own within a few
+seconds. No reset, no reflash.
+
+### Address
+
+Not fixed by the part. PCF8574**T** backpacks land in `0x20`–`0x27` (usually `0x27`);
+PCF8574**AT** ones in `0x38`–`0x3F` (usually `0x3F`); the A0/A1/A2 solder jumpers shift
+it further. `LCD_I2C_ADDR` in `config.h` is only the *first* address tried — the firmware
+probes both blocks and uses whatever answers, then prints it. A mismatch is not fatal and
+needs no config change.
+
+### What the 16-pin header does
+
+Reference only — the backpack occupies all 16, and none of them go to the ESP32.
+
+| LCD pin | Name | Backpack drives it from |
+|---:|---|---|
+| 1 | `VSS` (GND) | GND |
+| 2 | `VDD` (+5 V) | VCC |
+| 3 | `V0` (contrast) | the blue trimmer pot |
+| 4 | `RS` | PCF8574 `P0` |
+| 5 | `RW` | PCF8574 `P1` (tied for write) |
+| 6 | `E` (enable) | PCF8574 `P2` |
+| 7–10 | `D0`–`D3` | unused (4-bit mode) |
+| 11–14 | `D4`–`D7` | PCF8574 `P4`–`P7` |
+| 15 | `A` (backlight +) | VCC via the backlight jumper |
+| 16 | `K` (backlight −) | PCF8574 `P3` — this is how `lcd.backlight()` works |
+
+`DISPLAY_TYPE` in `config.h` selects the driver: `DISPLAY_OLED` (default, unchanged) or
+`DISPLAY_LCD1602`. A **2004 (20×4)** module also works — just set `LCD_COLS`/`LCD_ROWS`.
 
 ---
 

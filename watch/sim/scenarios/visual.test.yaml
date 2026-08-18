@@ -2,8 +2,11 @@ name: visual
 version: 1
 author: FitnessAI Watch
 
-# Screenshot-driven verification. Asserts nothing itself — it captures the OLED
+# Screenshot-driven verification. Asserts nothing itself — it captures the display
 # at each step so the frames can be inspected.
+#
+# The part captured is whichever display `config.h` compiles: `lcd` (LCD1602) or
+# `oled` (SSD1306). Change `part-id` below to match DISPLAY_TYPE.
 #
 # WHY THIS EXISTS: Wokwi's ESP32-C3 does not deliver this firmware's Serial
 # output to the CLI's monitor (see sim/README.md > Serial), so the scenarios
@@ -17,43 +20,43 @@ author: FitnessAI Watch
 steps:
   # ── Boot: 2 s loading bar, then the home screen ───────────────────────────
   - delay: 4s
-  - take-screenshot: { part-id: oled, save-to: shots/01-home.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/01-home.png }
 
   # ── Tap A: HOME -> STATUS (shows battDetail() from the M7 monitor) ────────
   - set-control: { part-id: btnA, name: pressed, value: 1 }
   - delay: 150ms
   - set-control: { part-id: btnA, name: pressed, value: 0 }
   - delay: 500ms
-  - take-screenshot: { part-id: oled, save-to: shots/02-status.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/02-status.png }
 
   # ── Healthy cell: pot 635 ~= 4.10 V. BATT_INTERVAL_MS is 10 s. ────────────
   - set-control: { part-id: batt, name: value, value: 635 }
   - delay: 12s
-  - take-screenshot: { part-id: oled, save-to: shots/03-batt-good.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/03-batt-good.png }
 
   # ── External power: pot 682 ~= 4.40 V, above the 4.25 V USB guess ─────────
   - set-control: { part-id: batt, name: value, value: 682 }
   - delay: 12s
-  - take-screenshot: { part-id: oled, save-to: shots/04-batt-usb.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/04-batt-usb.png }
 
   # ── Critical: pot 450 ~= 2.90 V, well under the 3.4 V shed threshold ──────
   - set-control: { part-id: batt, name: value, value: 450 }
   - delay: 12s
-  - take-screenshot: { part-id: oled, save-to: shots/05-batt-crit.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/05-batt-crit.png }
 
   # ── Tap A: STATUS -> SYNC ─────────────────────────────────────────────────
   - set-control: { part-id: btnA, name: pressed, value: 1 }
   - delay: 150ms
   - set-control: { part-id: btnA, name: pressed, value: 0 }
   - delay: 500ms
-  - take-screenshot: { part-id: oled, save-to: shots/06-sync.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/06-sync.png }
 
   # ── Tap A: SYNC -> STEPS, then walk ───────────────────────────────────────
   - set-control: { part-id: btnA, name: pressed, value: 1 }
   - delay: 150ms
   - set-control: { part-id: btnA, name: pressed, value: 0 }
   - delay: 500ms
-  - take-screenshot: { part-id: oled, save-to: shots/07-steps-before.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/07-steps-before.png }
 
   # Rest at 1 g on Z first: the part starts at 0,0,0, a magnitude of zero, which
   # reads as 9.8 m/s2 of deviation and sits permanently over the step threshold.
@@ -71,21 +74,21 @@ steps:
   - delay: 100ms
   - set-control: { part-id: imu, name: accelZ, value: 1 }
   - delay: 600ms
-  - take-screenshot: { part-id: oled, save-to: shots/08-steps-after.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/08-steps-after.png }
 
   # ── Tap A: STEPS -> HR (the synthetic PPG has been running since 3 s) ─────
   - set-control: { part-id: btnA, name: pressed, value: 1 }
   - delay: 150ms
   - set-control: { part-id: btnA, name: pressed, value: 0 }
   - delay: 500ms
-  - take-screenshot: { part-id: oled, save-to: shots/09-hr.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/09-hr.png }
 
   # ── Hold A: straight back to HOME (must NOT land one screen further on) ───
   - set-control: { part-id: btnA, name: pressed, value: 1 }
   - delay: 900ms
   - set-control: { part-id: btnA, name: pressed, value: 0 }
   - delay: 500ms
-  - take-screenshot: { part-id: oled, save-to: shots/10-home-after-hold.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/10-home-after-hold.png }
 
   # ── Double-tap B: display mute. The panel must go blank. ──────────────────
   - set-control: { part-id: btnB, name: pressed, value: 1 }
@@ -96,7 +99,7 @@ steps:
   - delay: 120ms
   - set-control: { part-id: btnB, name: pressed, value: 0 }
   - delay: 1s
-  - take-screenshot: { part-id: oled, save-to: shots/11-muted.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/11-muted.png }
 
   # ── Double-tap B again: display back on ───────────────────────────────────
   - set-control: { part-id: btnB, name: pressed, value: 1 }
@@ -107,4 +110,4 @@ steps:
   - delay: 120ms
   - set-control: { part-id: btnB, name: pressed, value: 0 }
   - delay: 1s
-  - take-screenshot: { part-id: oled, save-to: shots/12-unmuted.png }
+  - take-screenshot: { part-id: lcd, save-to: shots/12-unmuted.png }

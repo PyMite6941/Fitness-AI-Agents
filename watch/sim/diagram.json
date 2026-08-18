@@ -18,6 +18,13 @@
       "attrs": { "i2cAddress": "0x3c" }
     },
     {
+      "type": "wokwi-lcd1602",
+      "id": "lcd",
+      "top": -105,
+      "left": 430,
+      "attrs": { "pins": "i2c", "i2cAddress": "0x27" }
+    },
+    {
       "type": "wokwi-mpu6050",
       "id": "imu",
       "top": 60,
@@ -75,6 +82,11 @@
     [ "esp:8", "oled:CLK", "gold", [ "v-30", "h130" ] ],
     [ "esp:3V3", "oled:3V3", "red", [ "v-60", "h100" ] ],
     [ "esp:GND", "oled:GND", "black", [ "v-50", "h110" ] ],
+
+    [ "esp:7", "lcd:SDA", "green", [ "v-20", "h230" ] ],
+    [ "esp:8", "lcd:SCL", "gold", [ "v-10", "h240" ] ],
+    [ "esp:5V", "lcd:VCC", "red", [ "v-40", "h210" ] ],
+    [ "esp:GND", "lcd:GND", "black", [ "v-30", "h220" ] ],
 
     [ "esp:7", "imu:SDA", "green", [ "v20", "h140" ] ],
     [ "esp:8", "imu:SCL", "gold", [ "v30", "h150" ] ],
