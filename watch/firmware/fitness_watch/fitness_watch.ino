@@ -23,6 +23,7 @@
 #include <U8g2lib.h>
 #else
 #include <LiquidCrystal_I2C.h>
+#include <new>                  // placement new -- see lcdStorage below
 #endif
 #include <MAX30105.h>
 #include <heartRate.h>
@@ -101,6 +102,28 @@ static LiquidCrystal_I2C *lcd = nullptr;
 static uint8_t lcdAddr = 0;      // address it actually answered on (0 = absent)
 static bool    lcdOk   = false;  // false = no panel on the bus; all draws no-op
 
+// The panel object lives in a ZEROED static buffer and is placement-new'd, not
+// heap-allocated. That is not a style preference -- it is required for
+// correctness, because the library leaves _displayfunction uninitialised:
+//
+//   LiquidCrystal_I2C.cpp:62   _displayfunction = LCD_4BITMODE|LCD_1LINE|LCD_5x8DOTS
+//                              ^ the ONLY assignment, and it lives in init_priv()
+//   LiquidCrystal_I2C.cpp:68   _displayfunction |= LCD_2LINE      (OR, not assign)
+//   LiquidCrystal_I2C.cpp:107  command(LCD_FUNCTIONSET | _displayfunction)
+//
+// The constructor sets _Addr/_cols/_rows/_backlightval and nothing else. We call
+// begin() rather than init() on purpose (init() would call no-arg Wire.begin()
+// and drag the bus back to GPIO 8/9), but that skips line 62 -- so whatever is
+// in that byte is what gets sent to the HD44780 as its function set. Zeroed
+// storage makes it 0x00, which is exactly LCD_4BITMODE|LCD_1LINE|LCD_5x8DOTS, so
+// the panel receives 0x28 = 4-bit, 2-line, 5x8. On uninitialised heap memory a
+// stray LCD_8BITMODE (0x10) bit would tell the panel it is in 8-bit mode
+// immediately after we put it in 4-bit mode, and it would never display anything.
+//
+// Static storage also keeps the hot-plug retry from churning the heap: it
+// re-runs every DISPLAY_SELF_HEAL_MS for as long as the panel is missing.
+static uint8_t lcdStorage[sizeof(LiquidCrystal_I2C)];
+
 // Write one line of text to the character LCD, padded/truncated to LCD_COLS so
 // a shorter string never leaves ghost characters from the previous frame.
 //
@@ -160,9 +183,10 @@ static uint8_t lcdFindAddr() {
 static bool lcdTryBegin() {
   uint8_t a = lcdFindAddr();
   if (!a) { lcdOk = false; return false; }
-  if (lcd && a != lcdAddr) { delete lcd; lcd = nullptr; }   // moved address = rebuild
-  if (!lcd) lcd = new LiquidCrystal_I2C(a, LCD_COLS, LCD_ROWS);
-  if (!lcd) { lcdOk = false; return false; }
+  if (!lcd || a != lcdAddr) {                 // first build, or the address moved
+    memset(lcdStorage, 0, sizeof(lcdStorage));   // see the note on lcdStorage
+    lcd = new (lcdStorage) LiquidCrystal_I2C(a, LCD_COLS, LCD_ROWS);
+  }
   lcdAddr = a;
   // NOTE: use begin(cols, rows), NOT init(). This library's init() calls
   // Wire.begin() with NO arguments, which resets the ESP32-C3's I2C bus to the
