@@ -1365,6 +1365,15 @@ static void handleSerialCmd() {
           uint8_t zh  = mpuReadReg(0x3F, &ok);        // ACCEL_ZOUT_H
           Serial.printf("[watch] raw who=0x%02X pwr=0x%02X ax_h=0x%02X az_h=0x%02X read_ok=%d\n",
                         who, pwr, xh, zh, (int)ok);
+          // Write-then-verify on a harmless register (SMPLRT_DIV). If this
+          // sticks, writes work and PWR_MGMT_1 is being refused specifically;
+          // if it does not, the part ignores writes generally.
+          Wire.beginTransmission(MPU6050_ADDR);
+          Wire.write(0x19); Wire.write(0x07);
+          uint8_t e1 = Wire.endTransmission();
+          uint8_t rb = mpuReadReg(0x19, &ok);
+          Serial.printf("[watch] writetest smplrt: wrote 0x07 err=%u readback=0x%02X %s\n",
+                        e1, rb, (rb == 0x07) ? "STICKS" : "IGNORED");
         } else if (buf == "test") {
 #if DISPLAY_TYPE == DISPLAY_LCD1602
           // Fill every cell with the HD44780's solid-block glyph (0xFF). This is
@@ -1505,8 +1514,14 @@ static bool mpuForceWake() {
   Wire.beginTransmission(MPU6050_ADDR);
   Wire.write(0x6B);   // PWR_MGMT_1
   Wire.write(0x00);   // clear SLEEP, internal 8 MHz oscillator
-  Wire.endTransmission();
+  uint8_t werr = Wire.endTransmission();
   delay(20);          // the oscillator needs a moment before samples appear
+
+  // Whether the WRITE itself was acknowledged is the thing that separates the
+  // remaining explanations: a NACK (werr != 0) means the device is refusing the
+  // transaction, while an ACKed write that does not change the register means
+  // the die is not honouring it -- typically a counterfeit part.
+  if (werr) Serial.printf("[watch] MPU6050 write NACKed (Wire err=%u)\n", werr);
 
   bool ok = false;
   uint8_t pwr = mpuReadReg(0x6B, &ok);
