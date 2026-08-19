@@ -1433,16 +1433,69 @@ static void handleSerialCmd() {
 // Step to the next screen in the demo rotation. Deliberately separate from the
 // button handler's ORDER walk: this one moves forward and never needs to know
 // about holds, taps or the pair screen.
-static void nextScreenAuto() {
-  static const Screen DEMO_ORDER[] = {SCREEN_HOME, SCREEN_HR, SCREEN_STEPS,
-                                      SCREEN_MOTION, SCREEN_STATUS};
-  const int N = sizeof(DEMO_ORDER) / sizeof(DEMO_ORDER[0]);
-  for (int i = 0; i < N; i++) {
-    if (screen == DEMO_ORDER[i]) { goScreen(DEMO_ORDER[(i + 1) % N]); return; }
+// Build the rotation from what actually answered on the bus. Hard-coding it
+// meant a unit with no MAX30105 spent a fifth of its time showing a heart-rate
+// screen full of dashes; now a screen only joins the cycle once the sensor
+// behind it is present. Rebuilt on every advance, so a sensor plugged in while
+// running is picked up on the next step without a reset.
+static int buildDemoOrder(Screen *out) {
+  int n = 0;
+  out[n++] = SCREEN_HOME;                     // clock: always available
+  if (maxOk) out[n++] = SCREEN_HR;            // needs the MAX30105
+  if (mpuOk) {
+    out[n++] = SCREEN_STEPS;                  // both need the MPU6050
+    out[n++] = SCREEN_MOTION;
   }
-  goScreen(SCREEN_HOME);
+  out[n++] = SCREEN_STATUS;                   // always: it is what reports the gaps
+  return n;
+}
+
+static void nextScreenAuto() {
+  Screen order[5];
+  int n = buildDemoOrder(order);
+  for (int i = 0; i < n; i++) {
+    if (screen == order[i]) { goScreen(order[(i + 1) % n]); return; }
+  }
+  goScreen(order[0]);   // current screen just left the rotation (sensor removed)
 }
 #endif
+
+// Re-probe sensors that were absent at boot, so wiring one up while the watch is
+// running just works -- the same way the display already recovers.
+//
+// Both drivers' begin() calls Wire.begin() with NO arguments, which on the C3
+// resets the bus to the default GPIO 8/9 and would silently take the display
+// down with it. That is why the pins are re-asserted immediately afterwards.
+// The cheap i2cAck() gate keeps this from costing a full driver probe every
+// few seconds when nothing is plugged in.
+static void sensorRecheck() {
+#if !SIM_BUILD
+  if (maxOk && mpuOk) return;
+
+  if (!maxOk && i2cAck(MAX30105_ADDR)) {
+    if (particleSensor.begin(Wire, I2C_CLOCK_HZ, MAX30105_ADDR)) {
+      particleSensor.setup(MAX_LED_IR, 4, 2, 400, 411, 4096);
+      maxSetLeds(true);
+      maxOk = true;
+      Serial.println("[watch] MAX30105 appeared - heart rate live");
+    }
+    Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+    Wire.setClock(I2C_CLOCK_HZ);
+  }
+
+  if (!mpuOk && i2cAck(MPU6050_ADDR)) {
+    if (mpu.begin(MPU6050_ADDR, &Wire)) {
+      mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+      mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+      mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+      mpuOk = true;
+      Serial.println("[watch] MPU6050 appeared - motion live");
+    }
+    Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+    Wire.setClock(I2C_CLOCK_HZ);
+  }
+#endif
+}
 
 // Repaint whichever screen is active. Split out so the self-heal re-init below
 // can repaint the current frame immediately instead of leaving a blank flash.
@@ -1547,6 +1600,15 @@ void loop() {
     syncTick(clockNow(), beatAvg, stepCount);
   } else if (!DISPLAY_RADIO_TEST && !settings().paired && pairingActive()) {
     pairingLoop();   // keep an already-started portal alive (BLE-apply grace)
+  }
+
+  {
+    // Hot-plug check for sensors, on the display self-heal cadence.
+    static uint32_t lastSensorCheckMs = 0;
+    if (now - lastSensorCheckMs >= (uint32_t)DISPLAY_SELF_HEAL_MS) {
+      lastSensorCheckMs = now;
+      sensorRecheck();
+    }
   }
 
 #if DEMO_MODE && DEMO_SCREEN_MS > 0
