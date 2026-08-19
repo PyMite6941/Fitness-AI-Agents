@@ -620,6 +620,16 @@ static void pollAccelStep() {
   sensors_event_t accel, gyro, temp;
   mpu.getEvent(&accel, &gyro, &temp);
 
+  // A sleeping MPU6050 returns all zeros, and |0 - 9.81| reads as a permanent
+  // 9.81 of movement -- which the step detector would happily count. Catch it
+  // and re-wake rather than trusting the data.
+  if (accel.acceleration.x == 0.0f && accel.acceleration.y == 0.0f &&
+      accel.acceleration.z == 0.0f) {
+    static uint32_t lastWakeTry = 0;
+    if (nowMs - lastWakeTry > 2000) { lastWakeTry = nowMs; mpuForceWake(); }
+    return;                                  // don't feed zeros to the detector
+  }
+
   // Keep the UI upright whichever way the watch is turned (uses the gyro + the
   // same accel events we already paid for).
   orientScreen(accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
@@ -1237,10 +1247,14 @@ void setup() {
 
   mpuOk = mpu.begin(MPU6050_ADDR, &Wire);
   if (mpuOk) {
-    mpuForceWake();                         // see mpuForceWake() -- clone safety net
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+    // LAST, not first: an MPU6050 device reset leaves PWR_MGMT_1 at 0x40 with
+    // SLEEP set, and the driver's config writes are read-modify-write, so they
+    // preserve that bit rather than clearing it. Measured on hardware: the chip
+    // answered WHO_AM_I=0x68 while every accel register read 0x00.
+    mpuForceWake();
     DBG("MPU6050 init OK (addr 0x%02X)", MPU6050_ADDR);
   } else {
     Serial.println("[watch] MPU6050 NOT found on I2C bus");
@@ -1487,12 +1501,18 @@ static uint8_t mpuReadReg(uint8_t reg, bool *ok) {
 // WHO_AM_I while every accel/gyro register reads zero, which is exactly the
 // "detected but all readings are 0.00" symptom. Writing 0 to PWR_MGMT_1
 // directly costs nothing on a genuine part and fixes the clones.
-static void mpuForceWake() {
+static bool mpuForceWake() {
   Wire.beginTransmission(MPU6050_ADDR);
   Wire.write(0x6B);   // PWR_MGMT_1
   Wire.write(0x00);   // clear SLEEP, internal 8 MHz oscillator
   Wire.endTransmission();
-  delay(10);
+  delay(20);          // the oscillator needs a moment before samples appear
+
+  bool ok = false;
+  uint8_t pwr = mpuReadReg(0x6B, &ok);
+  bool awake = ok && ((pwr & 0x40) == 0);   // bit 6 = SLEEP
+  if (!awake) Serial.printf("[watch] MPU6050 still asleep after wake (PWR_MGMT_1=0x%02X)\n", pwr);
+  return awake;
 }
 
 // Re-probe sensors that were absent at boot, so wiring one up while the watch is
@@ -1520,10 +1540,10 @@ static void sensorRecheck() {
 
   if (!mpuOk && i2cAck(MPU6050_ADDR)) {
     if (mpu.begin(MPU6050_ADDR, &Wire)) {
-      mpuForceWake();                       // clones come back from reset asleep
       mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
       mpu.setGyroRange(MPU6050_RANGE_500_DEG);
       mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+      mpuForceWake();                       // after the setters -- see setup()
       mpuOk = true;
       Serial.println("[watch] MPU6050 appeared - motion live");
     }
