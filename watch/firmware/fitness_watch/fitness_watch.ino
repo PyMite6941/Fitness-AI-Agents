@@ -1237,6 +1237,7 @@ void setup() {
 
   mpuOk = mpu.begin(MPU6050_ADDR, &Wire);
   if (mpuOk) {
+    mpuForceWake();                         // see mpuForceWake() -- clone safety net
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
@@ -1340,6 +1341,16 @@ static void handleSerialCmd() {
           Serial.printf("[watch] imu=%d accel=%.2f move=%.2f gyro=%.2f steps=%lu\n",
                         (int)mpuOk, lastAccelMs2, lastDynMs2, lastGyroRads,
                         (unsigned long)stepCount);
+          // Raw registers too: if these move while the driver figures stay at
+          // 0.00 the fault is in the driver path, and if neither moves the chip
+          // itself is asleep or not really an MPU6050.
+          bool ok = false;
+          uint8_t who = mpuReadReg(0x75, &ok);        // WHO_AM_I: 0x68 on a genuine part
+          uint8_t pwr = mpuReadReg(0x6B, &ok);        // PWR_MGMT_1: bit6 set = asleep
+          uint8_t xh  = mpuReadReg(0x3B, &ok);        // ACCEL_XOUT_H
+          uint8_t zh  = mpuReadReg(0x3F, &ok);        // ACCEL_ZOUT_H
+          Serial.printf("[watch] raw who=0x%02X pwr=0x%02X ax_h=0x%02X az_h=0x%02X read_ok=%d\n",
+                        who, pwr, xh, zh, (int)ok);
         } else if (buf == "test") {
 #if DISPLAY_TYPE == DISPLAY_LCD1602
           // Fill every cell with the HD44780's solid-block glyph (0xFF). This is
@@ -1459,6 +1470,31 @@ static void nextScreenAuto() {
 }
 #endif
 
+// Read one MPU6050 register directly, bypassing the driver. Used to tell a
+// driver problem apart from a dead/asleep chip.
+static uint8_t mpuReadReg(uint8_t reg, bool *ok) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) { if (ok) *ok = false; return 0; }
+  if (Wire.requestFrom((int)MPU6050_ADDR, 1) != 1) { if (ok) *ok = false; return 0; }
+  if (ok) *ok = true;
+  return Wire.read();
+}
+
+// Force the device out of sleep. Adafruit's begin() issues a reset and is
+// supposed to leave PWR_MGMT_1 clear, but plenty of clone GY-521 boards come
+// back from that reset still asleep -- they ACK their address and answer
+// WHO_AM_I while every accel/gyro register reads zero, which is exactly the
+// "detected but all readings are 0.00" symptom. Writing 0 to PWR_MGMT_1
+// directly costs nothing on a genuine part and fixes the clones.
+static void mpuForceWake() {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(0x6B);   // PWR_MGMT_1
+  Wire.write(0x00);   // clear SLEEP, internal 8 MHz oscillator
+  Wire.endTransmission();
+  delay(10);
+}
+
 // Re-probe sensors that were absent at boot, so wiring one up while the watch is
 // running just works -- the same way the display already recovers.
 //
@@ -1484,6 +1520,7 @@ static void sensorRecheck() {
 
   if (!mpuOk && i2cAck(MPU6050_ADDR)) {
     if (mpu.begin(MPU6050_ADDR, &Wire)) {
+      mpuForceWake();                       // clones come back from reset asleep
       mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
       mpu.setGyroRange(MPU6050_RANGE_500_DEG);
       mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
