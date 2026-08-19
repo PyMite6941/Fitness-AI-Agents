@@ -458,14 +458,26 @@ static void drawLoadingOled(uint8_t pct) {
 #if DISPLAY_TYPE == DISPLAY_LCD1602
 static void drawLoadingLcd(uint8_t pct) {
   char line[LCD_COLS + 1];
-  snprintf(line, sizeof(line), "FitnessAI  %u%%", pct);
-  lcdRow(0, line);
-
   char bar[LCD_COLS + 1];
   int fill = (int)((long)LCD_COLS * pct / 100);
   for (int i = 0; i < LCD_COLS; i++) bar[i] = (i < fill) ? '#' : ' ';
   bar[LCD_COLS] = 0;
+
+  if (LCD_ROWS < 3) {
+    // 1602: the percentage has to share row 0 with the title.
+    snprintf(line, sizeof(line), "FitnessAI  %u%%", pct);
+    lcdRow(0, line);
+    lcdRow(1, bar);
+    return;
+  }
+
+  // 2004: title, bar, and room to say what is actually happening.
+  lcdRow(0, "FitnessAI Watch");
   lcdRow(1, bar);
+  snprintf(line, sizeof(line), "starting up... %u%%", pct);
+  lcdRow(2, line);
+  snprintf(line, sizeof(line), "v%s  %dx%d", APP_VERSION, LCD_COLS, LCD_ROWS);
+  lcdRow(3, line);
 }
 #endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
@@ -733,11 +745,31 @@ static void drawHrLcd() {
   char line[LCD_COLS + 1];
   lcdRow(0, "HEART RATE");
 
-  if (!maxOk) snprintf(line, sizeof(line), "-- BPM  sensor off");
-  else if (!fingerPresent) snprintf(line, sizeof(line), "-- BPM  no finger");
-  else if (beatAvg <= 0) snprintf(line, sizeof(line), "-- BPM  measuring");
-  else snprintf(line, sizeof(line), "%d BPM  live", beatAvg);
+  if (LCD_ROWS < 3) {
+    // 1602: reading and reason have to share the one remaining row.
+    if (!maxOk) snprintf(line, sizeof(line), "-- BPM  sensor off");
+    else if (!fingerPresent) snprintf(line, sizeof(line), "-- BPM  no finger");
+    else if (beatAvg <= 0) snprintf(line, sizeof(line), "-- BPM  measuring");
+    else snprintf(line, sizeof(line), "%d BPM  live", beatAvg);
+    lcdRow(1, line);
+    return;
+  }
+
+  // 2004: the reading gets its own row, and the two things that explain a
+  // missing reading (no sensor / no finger) each get one too, so a dash is
+  // never unexplained.
+  if (maxOk && fingerPresent && beatAvg > 0) snprintf(line, sizeof(line), "%d BPM", beatAvg);
+  else                                       snprintf(line, sizeof(line), "-- BPM");
   lcdRow(1, line);
+
+  snprintf(line, sizeof(line), "sensor: %s", maxOk ? "OK" : "MISSING");
+  lcdRow(2, line);
+
+  if (!maxOk)                 snprintf(line, sizeof(line), "finger: n/a");
+  else if (!fingerPresent)    snprintf(line, sizeof(line), "finger: none");
+  else if (beatAvg <= 0)      snprintf(line, sizeof(line), "finger: measuring");
+  else                        snprintf(line, sizeof(line), "finger: detected");
+  lcdRow(3, line);
 }
 #endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 
@@ -768,8 +800,25 @@ static void drawStepsLcd() {
   char line[LCD_COLS + 1];
   lcdRow(0, "STEPS");
 
+  if (LCD_ROWS < 3) {
+    snprintf(line, sizeof(line), "%lu  total", (unsigned long)stepCount);
+    lcdRow(1, line);
+    return;
+  }
+
+  // 2004: count, a rough distance, and whether the counter can even run.
   snprintf(line, sizeof(line), "%lu  total", (unsigned long)stepCount);
   lcdRow(1, line);
+
+  // Integer maths on purpose: AVR-style float printf is not linked in, and a
+  // 0.76 m average stride is well inside the error of a wrist step counter
+  // anyway. Metres = steps * 76 / 100.
+  unsigned long metres = (unsigned long)stepCount * 76UL / 100UL;
+  snprintf(line, sizeof(line), "~%lu m walked", metres);
+  lcdRow(2, line);
+
+  snprintf(line, sizeof(line), "IMU: %s", mpuOk ? "OK" : "MISSING");
+  lcdRow(3, line);
 }
 #endif  // DISPLAY_TYPE == DISPLAY_LCD1602
 

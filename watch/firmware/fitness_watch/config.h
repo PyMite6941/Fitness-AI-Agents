@@ -35,7 +35,7 @@
 //   DISPLAY_OLED     0 → SSD1306 128x64 OLED over I2C (U8g2). The panel this
 //                        firmware was verified on. The default — do not change
 //                        unless you are actually swapping the hardware.
-//   DISPLAY_LCD1602  1 → HD44780 1602 (or 2004) character LCD with a PCF8574
+//   DISPLAY_LCD1602  1 -> ANY HD44780 character LCD (1602 or 2004A) on a PCF8574
 //                        I2C backpack (LiquidCrystal_I2C library). Shares the
 //                        same two I2C wires as the sensors. Auto-rotation is
 //                        forced off (a character LCD has no rotation).
@@ -54,8 +54,8 @@
 #define OLED_HEIGHT     64
 
 // ── Character LCD (HD44780 via PCF8574 backpack) ─────────────────────────────
-// Only compiled when DISPLAY_TYPE == DISPLAY_LCD1602. A 2004 (20x4) module works
-// too: set LCD_COLS/LCD_ROWS.
+// Only compiled when DISPLAY_TYPE == DISPLAY_LCD1602. Currently configured for a
+// 2004A (20x4); a 1602 (16x2) works identically -- see PANEL SIZE below.
 //
 // WIRING — the backpack's 4-pin header, nothing else. The LCD's own 16-pin
 // header is already soldered to the backpack; you never wire those 16 yourself.
@@ -77,9 +77,15 @@
 // probes both blocks and uses whatever answers, so a mismatch is not fatal and
 // the boot log prints the address it found. Type `i2c` on the serial console to
 // scan on demand.
+//
+// PANEL SIZE. The firmware adapts every screen to these two numbers -- each
+// LCD screen has a `LCD_ROWS < 3` two-row layout and a four-row layout, so
+// switching between a 1602 and a 2004 needs nothing but these values.
+//   1602 (16x2):  LCD_COLS 16, LCD_ROWS 2
+//   2004A (20x4): LCD_COLS 20, LCD_ROWS 4   <-- current
 #define LCD_I2C_ADDR     0x27
-#define LCD_COLS         16
-#define LCD_ROWS         2
+#define LCD_COLS         20
+#define LCD_ROWS         4
 
 // Two SSD1306 init sequences exist for the 0.96" panel. ALT0 looked plausible
 // on the sparse measurement pattern, but with real text it interleaves/squashes
