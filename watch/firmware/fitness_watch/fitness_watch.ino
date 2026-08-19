@@ -72,7 +72,8 @@ static int i2cScanLog(const char *tag) {
     if (!i2cAck(addr)) continue;
     found++;
     const char *what = "?";
-    if (addr == OLED_ADDR)              what = "SSD1306 OLED";
+    if (addr == I2C_ADDR_SSD1306 ||
+        addr == I2C_ADDR_SSD1306_ALT)   what = "SSD1306 OLED";
     else if (addr == MPU6050_ADDR)      what = "MPU6050";
     else if (addr == MAX30105_ADDR)     what = "MAX30102/05";
     else if ((addr >= 0x20 && addr <= 0x27) ||

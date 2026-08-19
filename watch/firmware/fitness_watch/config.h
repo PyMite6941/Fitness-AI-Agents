@@ -30,6 +30,13 @@
                                         // corrupts this board's marginal bus (blank
                                         // OLED, MAX30105 fails). Do not raise.
 
+// ── Known I2C addresses (for the bus scanner) ────────────────────────────────
+// The boot scanner labels every device that answers, whichever panel happens to
+// be configured, so these are bus facts rather than panel settings and live
+// here rather than in a display module.
+#define I2C_ADDR_SSD1306      0x3C
+#define I2C_ADDR_SSD1306_ALT  0x3D
+
 // ── Display module ───────────────────────────────────────────────────────────
 // Which physical panel is fitted. Everything specific to a panel -- geometry,
 // I2C address, init quirks, wiring -- lives in its own directory under
