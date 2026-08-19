@@ -57,7 +57,11 @@
 #define DISPLAY_HD44780_1602    1
 #define DISPLAY_HD44780_2004A   2
 
+// Overridable from the build (-DDISPLAY_MODULE=...) so CI can compile every
+// panel from the one source tree; the default below is what a plain build uses.
+#ifndef DISPLAY_MODULE
 #define DISPLAY_MODULE          DISPLAY_HD44780_2004A
+#endif
 
 // Driver selector used by the ~40 #if blocks in the sketch. Set by the panel
 // config included below -- do not set it by hand.

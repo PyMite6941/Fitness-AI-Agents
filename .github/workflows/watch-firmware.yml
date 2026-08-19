@@ -39,6 +39,16 @@ jobs:
           - path: fitness_watch
             name: fitness_watch_sim
             flags: '-DSIM_BUILD=1'
+          # One job per display module in watch/firmware/displays/. The panel
+          # configs are separate files, so a change to shared code can compile
+          # against the fitted panel and still break another; building all three
+          # is what catches that. (The default build above covers the 2004A.)
+          - path: fitness_watch
+            name: fitness_watch_oled
+            flags: '-DDISPLAY_MODULE=DISPLAY_SSD1306_OLED'
+          - path: fitness_watch
+            name: fitness_watch_lcd1602
+            flags: '-DDISPLAY_MODULE=DISPLAY_HD44780_1602'
     steps:
       - uses: actions/checkout@v4
 
