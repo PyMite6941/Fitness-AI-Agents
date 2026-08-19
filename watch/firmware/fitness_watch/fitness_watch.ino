@@ -281,6 +281,13 @@ static void resetHeartRate() {
 
 // ── Step counting (simple threshold/debounce on accel magnitude) ────────────
 static uint32_t stepCount = 0;
+
+// Latest motion figures, kept for the MOTION screen. pollAccelStep() already
+// computes all three every cycle for step detection and auto-orientation; they
+// were simply being discarded afterwards.
+static float lastAccelMs2 = 0.0f;   // |acceleration| including gravity (~9.81 at rest)
+static float lastDynMs2   = 0.0f;   // deviation from gravity = actual movement
+static float lastGyroRads = 0.0f;   // |rotation rate|, rad/s
 static bool aboveStepThreshold = false;
 static uint32_t lastStepMs = 0;
 static const float STEP_THRESHOLD_MS2 = 2.0f;  // deviation from gravity to count as motion
@@ -623,6 +630,12 @@ static void pollAccelStep() {
                      accel.acceleration.z * accel.acceleration.z);
   float dynamic = fabsf(mag - 9.80665f);   // deviation from gravity at rest
 
+  lastAccelMs2 = mag;
+  lastDynMs2   = dynamic;
+  lastGyroRads = sqrtf(gyro.gyro.x * gyro.gyro.x +
+                       gyro.gyro.y * gyro.gyro.y +
+                       gyro.gyro.z * gyro.gyro.z);
+
   if (dynamic > STEP_THRESHOLD_MS2) {
     if (!aboveStepThreshold && (nowMs - lastStepMs) > STEP_DEBOUNCE_MS) {
       stepCount++;
@@ -857,6 +870,37 @@ static void drawStepsLcd() {
   lcdRow(2, line);
 
   snprintf(line, sizeof(line), "IMU: %s", mpuOk ? "OK" : "MISSING");
+  lcdRow(3, line);
+}
+#endif  // DISPLAY_TYPE == DISPLAY_LCD1602
+
+// ── Motion screen (LCD) ──────────────────────────────────────────────────────
+// Live accelerometer + gyroscope. `move` is the figure the step detector
+// actually thresholds on (deviation from gravity), so watching it is the
+// quickest way to tell whether the IMU is responding to being picked up.
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+static void drawMotionLcd() {
+  char line[LCD_COLS + 1];
+  lcdRow(0, "MOTION");
+
+  if (!mpuOk) {
+    lcdRow(1, "IMU not connected");
+    if (LCD_ROWS >= 3) lcdRow(2, "wire SDA->7 SCL->8");
+    if (LCD_ROWS >= 4) lcdRow(3, "VCC->3V3  GND->GND");
+    return;
+  }
+
+  if (LCD_ROWS < 3) {
+    snprintf(line, sizeof(line), "g%.1f a%.1f", lastGyroRads, lastAccelMs2);
+    lcdRow(1, line);
+    return;
+  }
+
+  snprintf(line, sizeof(line), "accel %5.2f m/s2", lastAccelMs2);
+  lcdRow(1, line);
+  snprintf(line, sizeof(line), "move  %5.2f m/s2", lastDynMs2);
+  lcdRow(2, line);
+  snprintf(line, sizeof(line), "gyro  %5.2f rad/s", lastGyroRads);
   lcdRow(3, line);
 }
 #endif  // DISPLAY_TYPE == DISPLAY_LCD1602
@@ -1121,9 +1165,10 @@ static void handleButtons() {
 
   // Single-press action for B fires when the window expires with no second tap.
 #if DEMO_MODE
-  // Demo unit: the clock and the pulse, nothing else. SYNC and PAIR would both
-  // describe a network this build does not have.
-  static const Screen ORDER[] = {SCREEN_HOME, SCREEN_HR};
+  // Demo unit: everything the sensors can actually show. SYNC and PAIR are the
+  // only screens dropped -- both describe a network this build does not have.
+  static const Screen ORDER[] = {SCREEN_HOME, SCREEN_HR, SCREEN_STEPS,
+                                 SCREEN_MOTION, SCREEN_STATUS};
 #else
   static const Screen ORDER[] = {SCREEN_HOME, SCREEN_HR, SCREEN_STEPS, SCREEN_SYNC, SCREEN_STATUS};
 #endif
@@ -1288,6 +1333,23 @@ static void handleSerialCmd() {
           Serial.println("  p  = status line\n  s  = force sync now\n  t  = print device token\n  i2c = scan the I2C bus\n  d  = display state (+ retry a missing panel)\n  r  = reboot\n  clear = wipe pairing + reboot to portal");
         } else if (buf == "p") {
           logWatch();
+        } else if (buf == "test") {
+#if DISPLAY_TYPE == DISPLAY_LCD1602
+          // Fill every cell with the HD44780's solid-block glyph (0xFF). This is
+          // the highest-contrast thing the panel can show, so it is what to turn
+          // the contrast trimmer against: too low and the blocks are invisible,
+          // too high and the UNLIT cells darken too. Text is clearest just below
+          // the point where the blank rows start to shadow.
+          char blocks[LCD_COLS + 1];
+          memset(blocks, 0xFF, LCD_COLS);
+          blocks[LCD_COLS] = 0;
+          for (uint8_t r = 0; r < LCD_ROWS; r++) lcdRow(r, (r % 2) ? "" : blocks);
+          Serial.println("[watch] contrast pattern: alternating solid/blank rows.");
+          Serial.println("[watch] turn the blue trimmer until the solid rows are dark");
+          Serial.println("[watch] and the blank rows stay clear. Any key redraws.");
+#else
+          Serial.println("[watch] test pattern is LCD-only");
+#endif
         } else if (buf == "i2c") {
           i2cScanLog("manual");
         } else if (buf == "d") {
@@ -1359,6 +1421,21 @@ static void handleSerialCmd() {
   }
 }
 
+#if DEMO_MODE && DEMO_SCREEN_MS > 0
+// Step to the next screen in the demo rotation. Deliberately separate from the
+// button handler's ORDER walk: this one moves forward and never needs to know
+// about holds, taps or the pair screen.
+static void nextScreenAuto() {
+  static const Screen DEMO_ORDER[] = {SCREEN_HOME, SCREEN_HR, SCREEN_STEPS,
+                                      SCREEN_MOTION, SCREEN_STATUS};
+  const int N = sizeof(DEMO_ORDER) / sizeof(DEMO_ORDER[0]);
+  for (int i = 0; i < N; i++) {
+    if (screen == DEMO_ORDER[i]) { goScreen(DEMO_ORDER[(i + 1) % N]); return; }
+  }
+  goScreen(SCREEN_HOME);
+}
+#endif
+
 // Repaint whichever screen is active. Split out so the self-heal re-init below
 // can repaint the current frame immediately instead of leaving a blank flash.
 static void drawScreen() {
@@ -1371,6 +1448,7 @@ static void drawScreen() {
     case SCREEN_SYNC:   drawSyncLcd();   break;
     case SCREEN_STATUS: drawStatusLcd(); break;
     case SCREEN_PAIR:   drawPairLcd();   break;
+    case SCREEN_MOTION: drawMotionLcd(); break;
     default: break;
   }
 #else
@@ -1381,6 +1459,7 @@ static void drawScreen() {
     case SCREEN_SYNC:   drawSync();   break;
     case SCREEN_STATUS: drawStatus(); break;
     case SCREEN_PAIR:   drawPair();   break;
+    case SCREEN_MOTION: drawStatus();  break;   // no dedicated OLED motion screen yet
     default: break;
   }
 #endif
@@ -1461,6 +1540,18 @@ void loop() {
   } else if (!DISPLAY_RADIO_TEST && !settings().paired && pairingActive()) {
     pairingLoop();   // keep an already-started portal alive (BLE-apply grace)
   }
+
+#if DEMO_MODE && DEMO_SCREEN_MS > 0
+  // Auto-advance. A demo unit has no buttons, so without this it would sit on
+  // the home screen forever and none of the sensor screens would be seen.
+  {
+    static uint32_t lastAdvanceMs = 0;
+    if (now - lastAdvanceMs >= (uint32_t)DEMO_SCREEN_MS) {
+      lastAdvanceMs = now;
+      if (screen != SCREEN_BOOT) nextScreenAuto();
+    }
+  }
+#endif
 
   // Blank the panel once it has been ignored for long enough.
   if (DISPLAY_TIMEOUT_MS > 0 && !standby &&

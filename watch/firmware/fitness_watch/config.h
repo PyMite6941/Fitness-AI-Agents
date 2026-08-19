@@ -63,7 +63,12 @@
 // and DEMO_MODE transmits nothing, so it cannot be mistaken for a measurement
 // or leak into the backend. Set to 0 to show "--" when the sensor is absent.
 // A real MAX30105, if fitted, always takes precedence over this.
-#define DEMO_HR_SYNTH   1
+#define DEMO_HR_SYNTH   0
+
+// DEMO_MODE only. A demo unit has no buttons wired, so nothing would ever
+// advance the screen off HOME. Cycle through the rotation on a timer instead.
+// 0 disables auto-advance (useful if you HAVE wired the buttons).
+#define DEMO_SCREEN_MS  5000
 
 // ── OLED display (SSD1306 128x64) ────────────────────────────────────────────
 // Confirmed panel: "0.96" I2C OLED SSD1306 128x64" (Shopee #7216498277).
@@ -225,6 +230,13 @@
 // almost all of its time unobserved. 0 disables the timeout.
 // Any button press wakes it; the vitals, sync and BLE all keep running.
 #define DISPLAY_TIMEOUT_MS      30000
+
+// A demo unit is meant to be looked at, and it has no buttons wired to wake it
+// again, so the blanking timeout is off in DEMO_MODE regardless of the above.
+#if DEMO_MODE
+  #undef  DISPLAY_TIMEOUT_MS
+  #define DISPLAY_TIMEOUT_MS    0
+#endif
 
 // Wake the display on motion, using the accelerometer already being read for
 // step counting. DEFAULTS OFF, and that is deliberate: the step detector fires
@@ -394,7 +406,7 @@
 // entirely and keeps the sketch safe to reorder.
 
 enum Screen { SCREEN_BOOT, SCREEN_HOME, SCREEN_HR, SCREEN_STEPS, SCREEN_STATUS,
-              SCREEN_SYNC, SCREEN_PAIR };
+              SCREEN_SYNC, SCREEN_PAIR, SCREEN_MOTION };
 
 // One debounced tactile button. Taps fire on RELEASE so that a hold does not
 // also register as a tap; see updateButton() in the sketch.
