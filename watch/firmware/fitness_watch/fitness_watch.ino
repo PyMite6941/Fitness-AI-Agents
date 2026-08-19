@@ -1333,6 +1333,14 @@ static void handleSerialCmd() {
           Serial.println("  p  = status line\n  s  = force sync now\n  t  = print device token\n  i2c = scan the I2C bus\n  d  = display state (+ retry a missing panel)\n  r  = reboot\n  clear = wipe pairing + reboot to portal");
         } else if (buf == "p") {
           logWatch();
+        } else if (buf == "m") {
+          // Live motion readout. The MOTION screen shows the same three
+          // figures, but reading them over serial is how you check the IMU is
+          // actually responding without having to watch the panel.
+          Serial.printf("[watch] imu=%d accel=%.2f move=%.2f gyro=%.2f steps=%lu
+",
+                        (int)mpuOk, lastAccelMs2, lastDynMs2, lastGyroRads,
+                        (unsigned long)stepCount);
         } else if (buf == "test") {
 #if DISPLAY_TYPE == DISPLAY_LCD1602
           // Fill every cell with the HD44780's solid-block glyph (0xFF). This is
