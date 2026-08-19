@@ -1337,8 +1337,7 @@ static void handleSerialCmd() {
           // Live motion readout. The MOTION screen shows the same three
           // figures, but reading them over serial is how you check the IMU is
           // actually responding without having to watch the panel.
-          Serial.printf("[watch] imu=%d accel=%.2f move=%.2f gyro=%.2f steps=%lu
-",
+          Serial.printf("[watch] imu=%d accel=%.2f move=%.2f gyro=%.2f steps=%lu\n",
                         (int)mpuOk, lastAccelMs2, lastDynMs2, lastGyroRads,
                         (unsigned long)stepCount);
         } else if (buf == "test") {
