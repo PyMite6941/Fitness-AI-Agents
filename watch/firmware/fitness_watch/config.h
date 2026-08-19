@@ -30,21 +30,42 @@
                                         // corrupts this board's marginal bus (blank
                                         // OLED, MAX30105 fails). Do not raise.
 
-// ── Display type ─────────────────────────────────────────────────────────────
-// Which panel the firmware drives:
-//   DISPLAY_OLED     0 → SSD1306 128x64 OLED over I2C (U8g2). The panel this
-//                        firmware was verified on. The default — do not change
-//                        unless you are actually swapping the hardware.
-//   DISPLAY_LCD1602  1 -> ANY HD44780 character LCD (1602 or 2004A) on a PCF8574
-//                        I2C backpack (LiquidCrystal_I2C library). Shares the
-//                        same two I2C wires as the sensors. Auto-rotation is
-//                        forced off (a character LCD has no rotation).
+// ── Display module ───────────────────────────────────────────────────────────
+// Which physical panel is fitted. Everything specific to a panel -- geometry,
+// I2C address, init quirks, wiring -- lives in its own directory under
+// ../displays/, one per module. Change the ONE line below and rebuild.
 //
-// To switch, change the value on the LAST line and rebuild. Everything else in
-// this file applies to both.
+//   DISPLAY_SSD1306_OLED    0.96" SSD1306 128x64 OLED, I2C 0x3C, 3V3
+//                           ../displays/ssd1306_oled/
+//   DISPLAY_HD44780_1602    16x2 character LCD + PCF8574 backpack, 5V
+//                           ../displays/hd44780_1602/
+//   DISPLAY_HD44780_2004A   20x4 character LCD + PCF8574 backpack, 5V
+//                           ../displays/hd44780_2004a/   <-- current
+//
+// The two HD44780 panels share one driver: every LCD screen has a two-row and a
+// four-row layout and picks between them on LCD_ROWS, so they differ only in
+// geometry. They stay separate directories because the wiring, verified
+// addresses and gotchas differ per module -- see ../displays/README.md.
+#define DISPLAY_SSD1306_OLED    0
+#define DISPLAY_HD44780_1602    1
+#define DISPLAY_HD44780_2004A   2
+
+#define DISPLAY_MODULE          DISPLAY_HD44780_2004A
+
+// Driver selector used by the ~40 #if blocks in the sketch. Set by the panel
+// config included below -- do not set it by hand.
 #define DISPLAY_OLED      0
 #define DISPLAY_LCD1602   1
-#define DISPLAY_TYPE      DISPLAY_LCD1602
+
+#if   DISPLAY_MODULE == DISPLAY_SSD1306_OLED
+  #include "../displays/ssd1306_oled/display_config.h"
+#elif DISPLAY_MODULE == DISPLAY_HD44780_1602
+  #include "../displays/hd44780_1602/display_config.h"
+#elif DISPLAY_MODULE == DISPLAY_HD44780_2004A
+  #include "../displays/hd44780_2004a/display_config.h"
+#else
+  #error "DISPLAY_MODULE is not set to a known panel - see ../displays/"
+#endif
 
 // ── Demo mode ────────────────────────────────────────────────────────────────
 // 1 = STANDALONE DEMO UNIT. The watch runs completely offline: no BLE, no WiFi,
@@ -69,61 +90,6 @@
 // advance the screen off HOME. Cycle through the rotation on a timer instead.
 // 0 disables auto-advance (useful if you HAVE wired the buttons).
 #define DEMO_SCREEN_MS  5000
-
-// ── OLED display (SSD1306 128x64) ────────────────────────────────────────────
-// Confirmed panel: "0.96" I2C OLED SSD1306 128x64" (Shopee #7216498277).
-// Address is 0x3C on the overwhelming majority of these modules.
-#define OLED_ADDR       0x3C
-#define OLED_WIDTH      128
-#define OLED_HEIGHT     64
-
-// ── Character LCD (HD44780 via PCF8574 backpack) ─────────────────────────────
-// Only compiled when DISPLAY_TYPE == DISPLAY_LCD1602. Currently configured for a
-// 2004A (20x4); a 1602 (16x2) works identically -- see PANEL SIZE below.
-//
-// WIRING — the backpack's 4-pin header, nothing else. The LCD's own 16-pin
-// header is already soldered to the backpack; you never wire those 16 yourself.
-//   LCD backpack VCC -> ESP32 5V     <-- 5V, NOT 3V3. See below.
-//   LCD backpack GND -> ESP32 GND
-//   LCD backpack SDA -> GPIO 7  (PIN_I2C_SDA)
-//   LCD backpack SCL -> GPIO 8  (PIN_I2C_SCL)
-//
-// WHY 5V: an HD44780 module built for 5 V shows NOTHING at 3.3 V — the backlight
-// LED barely glows behind its 5 V-sized series resistor and the contrast bias
-// never drives the segments. "Not even lit" on 3V3 is this, not a code bug.
-// THE CATCH: the backpack pulls SDA/SCL up to its own VCC, so at 5 V those two
-// lines idle at 5 V into 3.3 V GPIOs. Pick one of the mitigations in
-// watch/README.md ("Wiring the LCD1602") before leaving it powered for long.
-//
-// ADDRESS: not fixed by the part. PCF8574T backpacks land in 0x20-0x27 (usually
-// 0x27), PCF8574AT ones in 0x38-0x3F (usually 0x3F), shifted by the A0/A1/A2
-// solder jumpers. The value below is only the FIRST address tried — dispBegin()
-// probes both blocks and uses whatever answers, so a mismatch is not fatal and
-// the boot log prints the address it found. Type `i2c` on the serial console to
-// scan on demand.
-//
-// PANEL SIZE. The firmware adapts every screen to these two numbers -- each
-// LCD screen has a `LCD_ROWS < 3` two-row layout and a four-row layout, so
-// switching between a 1602 and a 2004 needs nothing but these values.
-//   1602 (16x2):  LCD_COLS 16, LCD_ROWS 2
-//   2004A (20x4): LCD_COLS 20, LCD_ROWS 4   <-- current
-#define LCD_I2C_ADDR     0x27
-#define LCD_COLS         20
-#define LCD_ROWS         4
-
-// Two SSD1306 init sequences exist for the 0.96" panel. ALT0 looked plausible
-// on the sparse measurement pattern, but with real text it interleaves/squashes
-// the rows (lines overlap vertically on the pair screen) -> this panel wants
-// NONAME. The earlier "blank" NONAME run was the 400 kHz I2C bug, not this.
-#define OLED_INIT_ALT0  0   // 0 = NONAME (measured correct), 1 = ALT0
-
-// How often to force a full re-init + repaint of the SSD1306. A WiFi radio burst
-// landing mid-frame-write (or a marginal bus) can desync the panel's internal
-// address counter once in a while; the SSD1306 has no read-back, so the only way
-// to recover is to re-send the init sequence. Too slow (= the old hard-coded
-// 30 s) means a corrupted frame stays on screen a long time; too fast = a brief
-// clear-flash every interval. 5000 ms is a good stopgap.
-#define DISPLAY_SELF_HEAL_MS    5000
 
 // DIAGNOSTIC — 1 = run with the RADIO COMPLETELY OFF (no BLE, no WiFi AP/portal,
 // no NTP) and force the home screen. Use to isolate the display "tweaking":
