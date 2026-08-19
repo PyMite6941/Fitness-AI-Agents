@@ -454,6 +454,30 @@ static void drawLoadingOled(uint8_t pct) {
 }
 #endif  // DISPLAY_TYPE == DISPLAY_OLED
 
+// ── Demo heart rate ──────────────────────────────────────────────────────────
+// A demo unit usually has no MAX30105 fitted, which would leave the HR screen
+// reading "--" forever. This supplies a gently drifting resting pulse so there
+// is something to show.
+//
+// It is NOT a measurement and is never presented as one: every screen that
+// shows it prints "demo" beside it, the boot log says so, and DEMO_MODE
+// transmits nothing at all -- there is no path from here to the backend. A real
+// sensor, when fitted, always wins (demoHrActive() is false whenever maxOk).
+#if DEMO_MODE && DEMO_HR_SYNTH
+static bool demoHrActive() { return !maxOk; }
+
+static int demoHr() {
+  // Triangle wave, one full sweep a minute, 62-74 bpm. Integer maths only --
+  // no float, and nothing that pretends to be a physiological model.
+  uint32_t t = (millis() / 500) % 120;            // 0..119 over 60 s
+  int tri = (t < 60) ? (int)t : (int)(120 - t);   // 0..60..0
+  return 62 + (tri * 12) / 60;
+}
+#else
+static bool demoHrActive() { return false; }
+static int  demoHr()       { return 0; }
+#endif
+
 // ── Loading screen (LCD) ─────────────────────────────────────────────────────
 #if DISPLAY_TYPE == DISPLAY_LCD1602
 static void drawLoadingLcd(uint8_t pct) {
@@ -700,14 +724,21 @@ static void drawHomeLcd() {
   snprintf(line, sizeof(line), "%02d:%02d:%02d", hh, mm, ss);
   lcdRow(1, line);
 
-  if (!maxOk) snprintf(line, sizeof(line), "HR   sensor missing");
+  if (demoHrActive()) snprintf(line, sizeof(line), "HR   %d bpm (demo)", demoHr());
+  else if (!maxOk) snprintf(line, sizeof(line), "HR   sensor missing");
   else if (!fingerPresent) snprintf(line, sizeof(line), "HR   no finger --");
   else if (beatAvg <= 0) snprintf(line, sizeof(line), "HR   measuring...");
   else snprintf(line, sizeof(line), "HR   %d bpm", beatAvg);
   lcdRow(2, line);
 
+#if DEMO_MODE
+  // A demo unit is offline by definition, so say so on the face of it rather
+  // than showing a step count nobody is going to look at.
+  snprintf(line, sizeof(line), "DEMO - offline");
+#else
   if (!mpuOk) snprintf(line, sizeof(line), "IMU  missing");
   else snprintf(line, sizeof(line), "STEPS %lu", (unsigned long)stepCount);
+#endif
   lcdRow(3, line);
 }
 #endif  // DISPLAY_TYPE == DISPLAY_LCD1602
@@ -758,9 +789,17 @@ static void drawHrLcd() {
   // 2004: the reading gets its own row, and the two things that explain a
   // missing reading (no sensor / no finger) each get one too, so a dash is
   // never unexplained.
-  if (maxOk && fingerPresent && beatAvg > 0) snprintf(line, sizeof(line), "%d BPM", beatAvg);
+  if (demoHrActive())                        snprintf(line, sizeof(line), "%d BPM", demoHr());
+  else if (maxOk && fingerPresent && beatAvg > 0) snprintf(line, sizeof(line), "%d BPM", beatAvg);
   else                                       snprintf(line, sizeof(line), "-- BPM");
   lcdRow(1, line);
+
+  if (demoHrActive()) {
+    // Never let a generated number read as a reading.
+    lcdRow(2, "source: demo");
+    lcdRow(3, "not a measurement");
+    return;
+  }
 
   snprintf(line, sizeof(line), "sensor: %s", maxOk ? "OK" : "MISSING");
   lcdRow(2, line);
@@ -1081,7 +1120,13 @@ static void handleButtons() {
   }
 
   // Single-press action for B fires when the window expires with no second tap.
+#if DEMO_MODE
+  // Demo unit: the clock and the pulse, nothing else. SYNC and PAIR would both
+  // describe a network this build does not have.
+  static const Screen ORDER[] = {SCREEN_HOME, SCREEN_HR};
+#else
   static const Screen ORDER[] = {SCREEN_HOME, SCREEN_HR, SCREEN_STEPS, SCREEN_SYNC, SCREEN_STATUS};
+#endif
   const int N = (int)(sizeof(ORDER) / sizeof(ORDER[0]));
 
   if (btnA.tapEdge) {
@@ -1095,7 +1140,9 @@ static void handleButtons() {
   }
   if (bFirstTapMs && (int32_t)(millis() - bFirstTapMs) > BTN_DOUBLE_TAP_MS) {
     bFirstTapMs = 0;
+#if !DEMO_MODE
     if (screen == SCREEN_PAIR) { pairShowToken = !pairShowToken; return; }
+#endif
     goScreen(SCREEN_HOME);                // ── single press → home
   }
 }
@@ -1186,7 +1233,14 @@ void setup() {
   }
 #endif
 
-  if (DISPLAY_RADIO_TEST) {
+  if (DEMO_MODE) {
+    // Demo unit: nothing is paired, nothing connects, nothing is transmitted.
+    // No wifiSetup(), no syncBegin(), no portal, and BLE_ENABLE is forced 0 in
+    // config.h so bleStart() below never runs either.
+    screen = SCREEN_HOME;
+    Serial.println("[watch] DEMO MODE: offline, radios off, clock + HR only");
+    if (DEMO_HR_SYNTH) Serial.println("[watch] DEMO MODE: synthetic HR when no MAX30105 fitted (not a measurement)");
+  } else if (DISPLAY_RADIO_TEST) {
     // Diagnostic build: radios never come up; force the home screen so the
     // only thing touching the display is the 5 fps repaint + self-heal.
     screen = SCREEN_HOME;
@@ -1204,7 +1258,9 @@ void setup() {
     DBG("unpaired -> HOME (standalone, radio off)");
   }
 
-  clockBegin();   // NTP always registered; it syncs once WiFi is up (or via BLE TIME)
+  // NTP is a network service, so a demo unit skips it and free-runs its clock
+  // from millis(). Nothing on screen depends on wall-clock accuracy.
+  if (!DEMO_MODE) clockBegin();
 
   if (BLE_ENABLE && !DISPLAY_RADIO_TEST) bleStart();   // BLE is always on — the controller link to phone/web
 
@@ -1378,8 +1434,10 @@ void loop() {
 
   powerTick();                       // battery sample (throttled to BATT_INTERVAL_MS)
 
+#if !DEMO_MODE
   netTick();                         // BLE-triggered "apply" pair verification
   if (BLE_ENABLE) bleTick();         // keep the STATE beacon fresh for connected phones
+#endif
 
   // Networking: pairing portal when unpaired, else background wifi + sync.
   // Skipped entirely in the DISPLAY_RADIO_TEST diagnostic build, and shed once
@@ -1391,7 +1449,11 @@ void loop() {
   if (crit && !loggedCrit) { loggedCrit = true; DBG("battery critical -> radio shed"); }
   if (!crit) loggedCrit = false;
 
-  if (crit) {
+  if (DEMO_MODE) {
+    // Demo unit: no radio is ever brought up, so there is nothing to tick,
+    // nothing to shed on low battery, and nothing to sync. This is the single
+    // guarantee that a demo build transmits nothing.
+  } else if (crit) {
     wifiOff();
   } else if (settings().paired && settings().ssid[0] && !DISPLAY_RADIO_TEST) {
     wifiTick();

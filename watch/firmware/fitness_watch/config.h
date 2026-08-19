@@ -46,6 +46,25 @@
 #define DISPLAY_LCD1602   1
 #define DISPLAY_TYPE      DISPLAY_LCD1602
 
+// ── Demo mode ────────────────────────────────────────────────────────────────
+// 1 = STANDALONE DEMO UNIT. The watch runs completely offline: no BLE, no WiFi,
+// no SoftAP setup portal, no NTP, no cloud sync, and no pairing screen. Nothing
+// is transmitted and nothing needs to be paired -- power it on and it shows the
+// clock and heart rate. The screen rotation is trimmed to those two.
+//
+// Set to 0 for the full product firmware (BLE pairing + /ingest sync).
+#define DEMO_MODE       1
+
+// DEMO_MODE only. With no MAX30105 fitted there is no pulse to read, so the HR
+// screen would sit at "--" forever. 1 = put a gently drifting resting rate on
+// screen instead, so a demo unit has something to show.
+//
+// It is labelled "demo" on every screen that displays it and in the serial log,
+// and DEMO_MODE transmits nothing, so it cannot be mistaken for a measurement
+// or leak into the backend. Set to 0 to show "--" when the sensor is absent.
+// A real MAX30105, if fitted, always takes precedence over this.
+#define DEMO_HR_SYNTH   1
+
 // ── OLED display (SSD1306 128x64) ────────────────────────────────────────────
 // Confirmed panel: "0.96" I2C OLED SSD1306 128x64" (Shopee #7216498277).
 // Address is 0x3C on the overwhelming majority of these modules.
@@ -276,6 +295,13 @@
 // clock ("dates and etc"), and issues commands. Health data still travels to the
 // backend DIRECTLY over WiFi (/ingest) — BLE never carries readings.
 #define BLE_ENABLE        1
+
+// A demo unit must not advertise. This override is here rather than at the
+// definition so BLE_ENABLE reads normally for the product build.
+#if DEMO_MODE
+  #undef  BLE_ENABLE
+  #define BLE_ENABLE      0
+#endif
 #define BLE_DEVICE_NAME   "FitnessAI Watch"
 #define BLE_SERVICE_UUID  "0000F1A0-0000-1000-8000-00805F9B34FB"
 #define BLE_UUID_SSID     "0000F1A1-0000-1000-8000-00805F9B34FB"
