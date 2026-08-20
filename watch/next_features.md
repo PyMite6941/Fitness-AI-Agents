@@ -362,6 +362,132 @@ design before any code is written.
 
 ---
 
+## Staying connected without a SIM
+
+Worth being blunt first: **"connected at all times" is not achievable with WiFi
+alone.** WiFi reaches the internet only where a known access point is in range,
+so a WiFi-only watch is *eventually* connected, not continuously. Three
+architectures actually deliver on this, in increasing order of what they cost.
+
+### Option 1 — WiFi plus durable store-and-forward (nearly built)
+
+The watch already queues readings offline and flushes them when it associates.
+Make that queue survive a reboot (#1) and this becomes genuinely reliable: data
+is never lost, it is just delayed until the watch is next near a known network.
+
+- **Coverage:** home, gym, office — anywhere you have entered credentials.
+- **Power:** the radio is the dominant load. The C3 draws ~350 mA transmitting
+  and ~93 mA receiving; continuous receive would flatten a 500 mAh cell in about
+  five hours. `wifiSetup()` already enables modem sleep (`WiFi.setSleep(true)`),
+  so the radio wakes on the AP's DTIM beacons instead of staying pinned awake,
+  which drops the average by roughly an order of magnitude.
+- **Verdict:** the right default. Cheapest, already mostly written.
+- **Gap:** says nothing about being out of the house.
+
+### Option 2 — ESP-NOW gateways (the mesh plan above)
+
+Mains-powered gateways carry the internet uplink; watches reach whichever is in
+range. Extends coverage to wherever you place gateways, and removes per-watch
+WiFi credentials entirely.
+
+- **Coverage:** a radius around each gateway you deploy — under ~100 m per hop.
+- **Power:** the cheapest option for the *watch*, because a leaf node transmits
+  briefly and sleeps.
+- **Verdict:** excellent for a controlled space (a home, a gym, a team room).
+  Still not "anywhere".
+
+### Option 3 — LoRaWAN (the real wide-area answer)
+
+Long-range sub-GHz radio, no SIM and no carrier. Range is kilometres rather than
+metres, and **The Things Network** is a free community network you can join —
+or you run your own gateway and cover your own area.
+
+- **Coverage:** 2–5 km per gateway; genuinely wide-area.
+- **Power:** an SX1262 node with duty cycling and deep sleep can average around
+  **175 µA**, which is wearable-grade — better than WiFi by orders of magnitude.
+- **Costs:** tiny payloads (tens of bytes), regulatory duty-cycle limits on how
+  often you may transmit, and **firmware updates are not practical over it** —
+  far too slow.
+- **Verdict:** the only option that plausibly means "always reachable" without
+  cellular.
+
+### Recommended: hybrid
+
+Use both, for what each is good at:
+
+| Path | Carries |
+|---|---|
+| **LoRaWAN** | Continuous trickle — heartbeat, step count, HR summary, alerts. Small, frequent, everywhere. |
+| **WiFi / ESP-NOW** | Bulk sync of the detailed queue, and OTA firmware. When in range. |
+
+The watch is then always *reachable*, and fully *synchronised* whenever it comes
+near a known network.
+
+### Hardware note
+
+The search results for SX1262 wearable nodes are ESP32-**S3** boards (Heltec
+WiFi LoRa 32 V3, XIAO ESP32S3 + Wio-SX1262). The C3 can drive an SX1262 over
+SPI, but SPI needs about four pins and the SuperMini has only 0, 1, 2, 9, 10
+free — see the pin budget below. Going LoRa most likely means moving to a board
+with the radio integrated, which is a bigger decision than adding a module.
+
+---
+
+## Server-scheduled haptics — buzz at an exact time
+
+The requirement is a buzz at a precise moment, commanded by the server. The
+design point that makes this work:
+
+> **The server must not send "buzz now". It sends "buzz at 14:30".**
+
+You cannot reliably reach a sleeping, intermittently-connected device at an exact
+instant. Polling every five minutes gives up to five minutes of latency; holding
+a persistent connection open to remove that latency costs the radio power that a
+wrist-worn battery does not have. Every real device solves this the same way —
+alarms fire *locally*, from a schedule delivered in advance.
+
+### The flow
+
+1. **Server holds a schedule** per device — a list of `{time, message, pattern}`.
+2. **Watch fetches upcoming entries** on the sync tick it already runs every five
+   minutes. No extra radio wake, so effectively free.
+3. **Watch persists the schedule** to NVS/flash, so it survives a reboot.
+4. **A local timer fires the haptic** at the exact second, from the watch's own
+   clock.
+5. **Watch acknowledges** on its next sync so the server knows it fired.
+
+### What this buys
+
+- **Exact.** Accuracy is limited by the watch's clock, not by network latency.
+- **Works offline.** Once downloaded, the buzz fires with no connectivity at all.
+- **Cheap in power.** No persistent connection, no extra wake-ups.
+
+### The dependency this creates
+
+An exact-time alarm is only as good as the clock behind it — which makes the
+three clock defects above (#C1–C3) blocking work for this feature, not optional
+polish. A watch whose clock is uptime cannot fire an alarm at 14:30, and one
+that free-runs on an RC oscillator will drift away from it. **The DS3231 (#22)
+stops being a nice-to-have** the moment alarms matter.
+
+### If you genuinely need instant, unscheduled alerts
+
+Scheduling covers alarms, reminders and coaching prompts — anything known in
+advance. For a truly immediate push there is no free lunch; pick your cost:
+
+| Approach | Latency | Cost |
+|---|---|---|
+| Shorter poll interval | = interval | Battery, linearly |
+| Persistent MQTT keepalive | Seconds | Radio never fully sleeps |
+| LoRaWAN **Class A** | Until next uplink | Very low power — downlink only in the window after the watch transmits |
+| LoRaWAN **Class C** | Immediate | Continuous receive; mains-powered devices only |
+
+LoRaWAN's class model maps onto this exactly: **Class A plus scheduled alerts**
+is the combination that gives a battery-powered watch both wide-area reach and
+exact-time buzzing.
+
+---
+
 ## Pin budget — the real constraint
 
 The C3 SuperMini is pin-starved and several features above compete for the same
