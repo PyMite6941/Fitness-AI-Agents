@@ -572,6 +572,69 @@ exact-time buzzing.
 
 ---
 
+## Newer screen modules worth considering
+
+The `displays/` directory added in this refactor exists precisely so a panel swap
+is a contained change. What it costs varies enormously by interface, and on this
+board that — not price — is what decides.
+
+### The candidates
+
+| Module | Res | Interface | Pins needed | Effort here |
+|---|---|---|---|---|
+| **SH1106 1.3" OLED** | 128×64 | I²C | **0 extra** | Trivial — a U8g2 constructor swap |
+| **ST7789 1.3"** | 240×240 | SPI | ~4–5 | New driver branch |
+| **GC9A01 1.28" round IPS** | 240×240 | SPI | ~4–5 | New driver branch |
+| **Waveshare AMOLED 1.8"** | varies | SPI/QSPI | 5+ | New driver, premium option |
+
+### SH1106 — the cheap win
+
+The most common upgrade from the 0.96" SSD1306: same 128×64, physically larger,
+so text is markedly more readable. It also handles **partial refresh** better,
+which matters for a battery device that only wants to redraw a clock digit
+rather than push a whole frame.
+
+Crucially it is **I²C**, so it joins the bus that already exists and needs **no
+new GPIOs at all**. U8g2 already supports it — this is a `display_config.h` plus
+one constructor, and it fits the existing architecture with no new driver branch.
+
+**If you want a better screen without a redesign, this is the one.**
+
+### ST7789 / GC9A01 — the smartwatch look, at a real cost
+
+A 240×240 round IPS is what makes a build read as a *watch* rather than a
+breadboard project: graphs, trends, a real watch face. Both are well supported
+and fast (ST7789 tolerates higher SPI clocks than ILI9341).
+
+**But the pin budget does not work on the C3 SuperMini.** An SPI TFT wants SCK,
+MOSI, CS, DC and RST. Free pins are 0, 1, 2, 9, 10 — five, which looks like
+exactly enough until you notice:
+
+- **GPIO 9 is the BOOT strapping pin.** A display driving it LOW at reset puts
+  the chip into download mode. It is not safe for CS or RST.
+- That leaves **0, 1, 2, 10** — four. Tying the display's RST to the 3V3 rail
+  (standard practice) makes it fit.
+- After which **nothing is left** for GPS TX, haptics or USB sense.
+
+So a round display on the current board means giving up most of the rest of the
+roadmap. That is a legitimate trade if the display *is* the product — but it
+should be a deliberate choice rather than a surprise found during wiring.
+
+### The honest recommendation
+
+1. **SH1106 now** if the goal is "easier to read". Zero pins, an afternoon.
+2. **Round IPS with a board change** if the goal is "looks like a watch". This
+   is the same conclusion the LoRa section reached from a different direction:
+   the C3 SuperMini is out of pins, and an ESP32-S3 board resolves the display,
+   the radio and the GPIO budget in one move.
+3. **Keep the HD44780** for bring-up and debugging regardless — a character LCD
+   that needs two wires is genuinely useful when the fancy screen is misbehaving.
+
+Whichever way it goes, the `displays/` layout means adding a panel is a new
+directory plus a driver branch, not a fork of the firmware.
+
+---
+
 ## Pin budget — the real constraint
 
 The C3 SuperMini is pin-starved and several features above compete for the same
