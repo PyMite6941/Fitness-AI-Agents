@@ -433,6 +433,90 @@ with the radio integrated, which is a bigger decision than adding a module.
 
 ---
 
+## How long the watch can hold data
+
+"Server sends it, the watch holds it as long as necessary" is the right model,
+and the limit is comfortable once the queue lives in flash (#1).
+
+A packed reading — timestamp, HR, step delta, a few flags — runs about 24 bytes.
+At the current one-per-minute cadence:
+
+| Cadence | Per day | 512 KB partition | 1 MB partition |
+|---|---|---|---|
+| 1/min | ~35 KB | ~15 days | ~30 days |
+| 1/5 min | ~7 KB | ~70 days | ~140 days |
+
+Today's RAM queue holds 240 readings — **about four hours** — and loses all of
+it on a reboot. Moving to flash turns "a few hours if nothing goes wrong" into
+"weeks, reliably", which is what makes an intermittently-connected watch
+actually viable.
+
+Two things worth building alongside it:
+
+- **Back off when offline.** Drop to one reading every five minutes after a few
+  hours with no uplink. Detail matters least for the period you were not
+  wearing it near a network, and this multiplies the buffer several times over.
+- **Drop oldest, not newest, when full.** And report the loss rather than
+  discarding silently, which is what the current queue does.
+
+The same store-and-hold applies downward: schedules, alert times and settings
+sent by the server are written to flash and act from there, so the watch keeps
+doing the right thing with no connection at all.
+
+---
+
+## The easiest path to the internet
+
+Ranked by what you would actually have to build, given what already exists.
+
+### 1. WiFi at known networks — already built, already easy
+
+The captive portal and BLE pairing both work; enter credentials once and the
+watch syncs whenever it is in range. For a fitness watch this covers most of
+real life: home, gym, office.
+
+**Nothing to build.** Pair it with the durable queue (#1) and you have a watch
+that never loses data and catches up whenever you walk in the door.
+
+### 2. Phone as a BLE bridge — mostly built, and how every commercial tracker works
+
+This is the cheapest route to "connected wherever you are", because the phone
+already carries cellular and goes everywhere with the wearer. Fitbit, Garmin and
+Apple all do exactly this; the watch is rarely the thing holding the connection.
+
+**What already exists:**
+
+- The watch runs a **BLE GATT peripheral** (`ble.cpp`) — the control link is live.
+- The Android app already **authenticates with a `fit_…` device token** and
+  **posts to `/ingest`** (`Uploader.kt`, `MainActivity.kt`).
+
+**What is missing:** BLE *client* code in the Android app — connect to the
+watch's service, drain its queue, hand it to the uploader it already has. The
+two hard halves are done; the bridge between them is not.
+
+This also gives the downlink for free: the phone fetches schedules and pushes
+them over the same BLE session, so the scheduled-haptic design works with no
+new backend transport at all.
+
+### 3. Mesh or LoRa — only if phone-free is a hard requirement
+
+Real infrastructure, real effort, covered in the sections above. Worth it when
+the point is that **no phone exists** — a shared gym, a team deployment, a user
+who does not carry a phone. Not worth it as a way to avoid writing BLE client
+code.
+
+### Recommendation
+
+Do **1 and 2**. They are largely built, they cover the overwhelming majority of
+real use, and together they already deliver "always connected" in the sense that
+matters — data always arrives, and schedules always land.
+
+Treat **3** as a product decision rather than an engineering one. It is the
+right answer if phone-free operation is the point of the product; it is an
+expensive detour if it is not.
+
+---
+
 ## Server-scheduled haptics — buzz at an exact time
 
 The requirement is a buzz at a precise moment, commanded by the server. The
