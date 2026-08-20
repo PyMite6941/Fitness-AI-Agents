@@ -26,6 +26,7 @@ struct WatchSettings {
   char   pass[65];   // that hotspot's password
   char   token[64];  // the "fit_…" device token from the web app
   char   name[32];   // device label shown in the app's Devices list
+  char   apPass[65]; // WPA2 key for the phone-link SoftAP (from the web settings)
 };
 
 bool settingsLoaded();
@@ -34,6 +35,21 @@ WatchSettings &settingsMut();                            // mutable handle — c
 void settingsLoad();                                 // pulls NVS into RAM (idempotent)
 void settingsSave();                                 // pushes RAM into NVS
 void settingsClear();                                // factory reset -> unpaired
+
+// ── Phone link SoftAP ────────────────────────────────────────────────────────
+// The watch raises its own WPA2 access point for a phone to join, rather than
+// both having to be on someone else's network. The phone keeps its internet
+// over cellular and reaches the watch on the AP for local traffic, so it can
+// drain the queue and push schedules down without any shared infrastructure.
+//
+// This is NOT the provisioning portal (pairingBegin) -- that one is open and
+// exists only to collect credentials.
+bool linkApBegin();          // raise the AP; false if no usable password is set
+void linkApEnd();            // drop it and release the radio
+bool linkApActive();
+int  linkApClients();        // phones currently joined
+const char *linkApSsid();    // "FitnessAI-A4B1C2"
+void linkApTick();           // idle timeout; call from the main loop
 
 // ── Clock (NTP) ──────────────────────────────────────────────────────────────
 void  clockBegin();          // start NTP sync attempt (call after WiFi up)

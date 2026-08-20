@@ -44,6 +44,7 @@ void settingsLoad() {
   p.getString(NVS_KEY_PASS, g_settings.pass, sizeof(g_settings.pass));
   p.getString(NVS_KEY_TOKEN, g_settings.token, sizeof(g_settings.token));
   p.getString(NVS_KEY_NAME, g_settings.name, sizeof(g_settings.name));
+  p.getString(NVS_KEY_APPASS, g_settings.apPass, sizeof(g_settings.apPass));
   p.end();
 
   DBG("settings: paired=%d ssid=\"%s\" token=%s",
@@ -59,6 +60,7 @@ void settingsSave() {
   p.putString(NVS_KEY_PASS, g_settings.pass);
   p.putString(NVS_KEY_TOKEN, g_settings.token);
   p.putString(NVS_KEY_NAME, g_settings.name);
+  p.putString(NVS_KEY_APPASS, g_settings.apPass);
   p.end();
   DBG("settings saved (paired=%d)", g_settings.paired);
 }
@@ -72,6 +74,108 @@ void settingsClear() {
   memset(&g_settings, 0, sizeof(g_settings));
   strncpy(g_settings.name, "fitness_watch", sizeof(g_settings.name) - 1);
   DBG("settings cleared");
+}
+
+// ── Phone link SoftAP ────────────────────────────────────────────────────────
+// The watch broadcasts its own WPA2 network for a phone to join. The phone keeps
+// its internet over cellular and uses this link purely for local traffic to the
+// watch, so no shared router is involved and no credentials for someone else's
+// network are needed.
+//
+// Kept deliberately separate from pairingBegin()'s provisioning portal: that one
+// is OPEN by design because its whole job is to collect credentials from someone
+// who has none yet. This one must never be open.
+
+static bool     g_linkApUp      = false;
+static int      g_linkApClients = 0;
+static uint32_t g_linkApUpMs    = 0;
+static uint32_t g_linkApLastJoin= 0;
+static char     g_linkSsid[33]  = {0};
+
+const char *linkApSsid()  { return g_linkSsid; }
+bool linkApActive()       { return g_linkApUp; }
+int  linkApClients()      { return g_linkApClients; }
+
+// Station join/leave arrive as WiFi events, so the watch knows a phone is on the
+// network without polling for it -- this is the "autodetect" half.
+static void linkApEvent(arduino_event_id_t event, arduino_event_info_t info) {
+  if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED) {
+    g_linkApClients = WiFi.softAPgetStationNum();
+    g_linkApLastJoin = millis();
+    DBG("link AP: phone joined (%d client%s)",
+        g_linkApClients, g_linkApClients == 1 ? "" : "s");
+  } else if (event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
+    g_linkApClients = WiFi.softAPgetStationNum();
+    DBG("link AP: phone left (%d client%s)",
+        g_linkApClients, g_linkApClients == 1 ? "" : "s");
+  }
+}
+
+bool linkApBegin() {
+  if (g_linkApUp) return true;
+
+  const char *pw = settings().apPass;
+  // WPA2 has an 8-character floor. softAP() would silently fall back to an OPEN
+  // network on a shorter key, which is worse than not starting at all -- anyone
+  // in range could then join and reach the watch.
+  if (strlen(pw) < LINK_AP_MIN_PASS) {
+    Serial.printf("[net] link AP refused: password is %u chars, need >= %d.
+",
+                  (unsigned)strlen(pw), LINK_AP_MIN_PASS);
+    Serial.println("[net] set it from the web app's device settings, or "
+                   "`ap <password>` on this console.");
+    return false;
+  }
+
+  // Suffix the SSID with the low 3 bytes of the MAC so two watches in the same
+  // room are distinguishable.
+  uint8_t mac[6] = {0};
+  WiFi.macAddress(mac);
+  snprintf(g_linkSsid, sizeof(g_linkSsid), "%s-%02X%02X%02X",
+           LINK_AP_PREFIX, mac[3], mac[4], mac[5]);
+
+  WiFi.onEvent(linkApEvent, ARDUINO_EVENT_WIFI_AP_STACONNECTED);
+  WiFi.onEvent(linkApEvent, ARDUINO_EVENT_WIFI_AP_STADISCONNECTED);
+
+  // AP_STA rather than AP: the watch keeps the option of its own uplink, which
+  // is what lets it sync directly when a known network is also in range.
+  if (WiFi.getMode() != WIFI_AP_STA) WiFi.mode(WIFI_AP_STA);
+  IPAddress ip(PORTAL_IP);
+  WiFi.softAPConfig(ip, ip, IPAddress(255, 255, 255, 0));
+  if (!WiFi.softAP(g_linkSsid, pw)) {
+    Serial.println("[net] link AP: softAP() failed");
+    return false;
+  }
+
+  g_linkApUp = true;
+  g_linkApUpMs = millis();
+  g_linkApLastJoin = 0;
+  g_linkApClients = 0;
+  Serial.printf("[net] link AP up: SSID \"%s\" at %s
+",
+                g_linkSsid, ip.toString().c_str());
+  return true;
+}
+
+void linkApEnd() {
+  if (!g_linkApUp) return;
+  WiFi.softAPdisconnect(true);
+  g_linkApUp = false;
+  g_linkApClients = 0;
+  DBG("link AP down");
+}
+
+// A SoftAP holds the radio in continuous receive (~93 mA on this chip), which is
+// the most expensive thing a battery watch can do. Drop it again if no phone
+// turns up, so an accidental activation cannot quietly flatten the cell.
+void linkApTick() {
+  if (!g_linkApUp || LINK_AP_IDLE_MS == 0) return;
+  if (g_linkApClients > 0) return;                 // someone is using it
+  uint32_t since = g_linkApLastJoin ? g_linkApLastJoin : g_linkApUpMs;
+  if (millis() - since >= (uint32_t)LINK_AP_IDLE_MS) {
+    Serial.println("[net] link AP idle -> dropping to save power");
+    linkApEnd();
+  }
 }
 
 // ── Clock (NTP) ──────────────────────────────────────────────────────────────

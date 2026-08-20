@@ -1392,6 +1392,29 @@ static void handleSerialCmd() {
 #else
           Serial.println("[watch] test pattern is LCD-only");
 #endif
+        } else if (buf == "ap") {
+          Serial.printf("[watch] link AP: %s ssid=%s clients=%d pass=%s\n",
+                        linkApActive() ? "UP" : "down",
+                        linkApSsid()[0] ? linkApSsid() : "(not started)",
+                        linkApClients(),
+                        settings().apPass[0] ? "set" : "NOT SET");
+        } else if (buf == "ap on") {
+          linkApBegin();
+        } else if (buf == "ap off") {
+          linkApEnd();
+        } else if (buf.startsWith("ap ")) {
+          // Set the WPA2 key. In the finished product this arrives from the
+          // user's web settings over BLE or the portal; this is the bench path.
+          String pw = buf.substring(3);
+          pw.trim();
+          if (pw.length() < LINK_AP_MIN_PASS) {
+            Serial.printf("[watch] password must be at least %d characters\n",
+                          LINK_AP_MIN_PASS);
+          } else {
+            strlcpy(settingsMut().apPass, pw.c_str(), sizeof(settingsMut().apPass));
+            settingsSave();
+            Serial.println("[watch] link AP password saved - `ap on` to start");
+          }
         } else if (buf == "i2c") {
           i2cScanLog("manual");
         } else if (buf == "d") {
@@ -1673,6 +1696,10 @@ void loop() {
   } else if (!DISPLAY_RADIO_TEST && !settings().paired && pairingActive()) {
     pairingLoop();   // keep an already-started portal alive (BLE-apply grace)
   }
+
+#if !DEMO_MODE
+  linkApTick();          // drop an idle phone-link AP before it drains the cell
+#endif
 
   {
     // Hot-plug check for sensors, on the display self-heal cadence.

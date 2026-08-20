@@ -333,6 +333,27 @@
 #define NVS_KEY_PASS        "pass"
 #define NVS_KEY_TOKEN       "token"
 #define NVS_KEY_NAME        "devname"
+#define NVS_KEY_APPASS      "appass"    // WPA2 key for the phone-link SoftAP
+
+// ── Phone link SoftAP (watch broadcasts, phone joins) ────────────────────────
+// Separate from the provisioning portal above. The watch raises a WPA2-protected
+// access point that the user's phone joins; the phone then talks to the watch at
+// PORTAL_IP while keeping its own internet over cellular, and relays data on.
+//
+// The SSID gets the low 3 bytes of the MAC appended so two watches in the same
+// room do not collide: "FitnessAI-A4B1C2".
+#define LINK_AP_PREFIX      "FitnessAI"
+
+// WPA2 refuses anything shorter than 8 characters. Below this the AP would fall
+// back to OPEN, which is a silent security hole -- the firmware refuses to start
+// the link AP instead. The password comes from the user's web settings.
+#define LINK_AP_MIN_PASS    8
+
+// Drop the AP again after this long with no phone joined. A SoftAP keeps the
+// radio receiving continuously (~93 mA on this chip), which is the single most
+// expensive thing a battery watch can do, so it must not idle up forever.
+// 0 = stay up until told otherwise.
+#define LINK_AP_IDLE_MS     120000
 
 // ── Simulator build (Wokwi) ──────────────────────────────────────────────────
 // Activated ONLY by -DSIM_BUILD=1 on the compiler command line, which is what
