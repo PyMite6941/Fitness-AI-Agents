@@ -119,8 +119,7 @@ bool linkApBegin() {
   // network on a shorter key, which is worse than not starting at all -- anyone
   // in range could then join and reach the watch.
   if (strlen(pw) < LINK_AP_MIN_PASS) {
-    Serial.printf("[net] link AP refused: password is %u chars, need >= %d.
-",
+    Serial.printf("[net] link AP refused: password is %u chars, need >= %d.\n",
                   (unsigned)strlen(pw), LINK_AP_MIN_PASS);
     Serial.println("[net] set it from the web app's device settings, or "
                    "`ap <password>` on this console.");
@@ -151,8 +150,7 @@ bool linkApBegin() {
   g_linkApUpMs = millis();
   g_linkApLastJoin = 0;
   g_linkApClients = 0;
-  Serial.printf("[net] link AP up: SSID \"%s\" at %s
-",
+  Serial.printf("[net] link AP up: SSID \"%s\" at %s\n",
                 g_linkSsid, ip.toString().c_str());
   return true;
 }
