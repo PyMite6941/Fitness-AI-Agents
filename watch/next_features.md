@@ -517,6 +517,73 @@ expensive detour if it is not.
 
 ---
 
+## The phone bridge — protocol (firmware side built)
+
+The watch-side half of the bridge is implemented. This is the contract the
+Android app is written against.
+
+### Why it is safe to lose the connection at any point
+
+The rule the whole design rests on:
+
+> **A reading is dropped only once the phone confirms the BACKEND accepted it.**
+
+Not when BLE delivered it. A phone can receive a batch perfectly and then find
+itself with no signal — if the watch had already discarded that data on
+delivery, it would be gone. So the watch holds everything until an ack comes
+back, and re-offers anything unacked.
+
+Sequence numbers make redelivery harmless: acking a range twice is a no-op, so a
+mid-transfer disconnect costs nothing but a repeat.
+
+### The characteristics
+
+| UUID suffix | Name | Direction | Carries |
+|---|---|---|---|
+| `F1A5` | `CMD` | phone → watch | `pull` starts a drain (also `sync`, `apply`, `stat`, `unpair`, `reboot`) |
+| `F1A8` | `DATA` | watch → phone | Notify. Batches of readings, `seq,epoch,hr,steps` per line |
+| `F1A9` | `ACK` | phone → watch | Highest seq the **backend** accepted, as decimal ASCII |
+| `F1A7` | `STATE` | watch → phone | Notify. Short status string |
+
+### The flow
+
+```
+phone: connect, subscribe to DATA
+phone: write CMD = "pull"
+watch: notify DATA  "12,1756000000,72,4310
+13,..."   (4 readings per packet)
+       ...
+watch: notify DATA  "END"
+phone: POST /ingest with the fit_ token
+phone: write ACK = "15"          <- only after the backend returns 2xx
+watch: drops seq <= 15, keeps the rest
+```
+
+### Notes for the Android implementation
+
+- **Request a larger MTU.** The default is 23 bytes (20 usable). Call
+  `requestMtu(247)` after connecting; batches are sized for that, and the watch
+  paces notifications at 30 ms because pushing faster overruns the controller
+  buffers on some phones and silently loses the tail of a batch.
+- **Ack only after a 2xx from `/ingest`.** Acking on receipt reintroduces
+  exactly the data-loss window this design removes.
+- **`END` means "nothing further on offer"**, not "everything succeeded". Any
+  unacked readings are still on the watch and will be offered on the next pull.
+- **Bind to the right network.** If the phone is on the watch's link AP, use
+  `WifiNetworkSpecifier` so app traffic reaches the watch while the phone keeps
+  its internet over cellular.
+- **The upload path already exists** — `Uploader.kt` authenticates with the
+  `fit_…` token and posts to `/ingest`. The bridge only has to feed it.
+
+### Still to build
+
+- BLE **client** code in the Android app — connect, subscribe, pull, ack.
+- Downlink for schedules: the same session should carry alert times to the
+  watch, which is what makes the scheduled haptics work without any new backend
+  transport.
+
+---
+
 ## Server-scheduled haptics — buzz at an exact time
 
 The requirement is a buzz at a precise moment, commanded by the server. The
