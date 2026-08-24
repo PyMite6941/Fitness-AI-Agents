@@ -30,6 +30,7 @@
  */
 void bleStart()       {}
 void bleTick()        {}
+void bleRelayRequest(){}
 bool bleActive()      { return false; }
 void bleNotifyState() {}
 void bleSleep()       {}
@@ -87,6 +88,58 @@ class WatchServerCallbacks : public BLEServerCallbacks {
   }
 };
 
+// ── Data bridge ──────────────────────────────────────────────────────────────
+// Streams queued readings to a connected phone, which uploads them to the
+// backend on the watch's behalf and acks what the backend actually accepted.
+//
+// The safety property: a reading is dropped ONLY after the phone confirms the
+// BACKEND took it. BLE delivery on its own proves nothing -- a phone can receive
+// a batch and then find itself with no signal. Until an ack arrives the watch
+// keeps everything, and simply re-sends. Sequence numbers make that redelivery
+// harmless: acking a range twice is a no-op.
+static BLECharacteristic *g_dataChar = nullptr;
+static bool     g_relayWanted = false;   // phone asked for a drain
+static uint32_t g_relayCursor = 0;       // how far through the queue we have sent
+static uint32_t g_lastNotifyMs = 0;
+
+void bleRelayRequest() { g_relayWanted = true; g_relayCursor = 0; }
+
+// Send one batch. Called from bleTick() so it never blocks the sensor loop.
+static void relayPump() {
+  if (!g_relayWanted || !g_connected || !g_dataChar) return;
+
+  int n = queueCount();
+  if (g_relayCursor >= (uint32_t)n) {
+    // Everything on hand has been offered. Stop pumping and wait for the ack;
+    // anything unacked is still in the queue and goes out on the next request.
+    g_relayWanted = false;
+    g_dataChar->setValue("END");
+    g_dataChar->notify();
+    BLE_DBG("relay: end of queue (%d offered)", n);
+    return;
+  }
+
+  // Pace the notifications. Pushing as fast as the loop runs overruns the
+  // controller's buffers on some phones and the tail of the batch is lost.
+  uint32_t now = millis();
+  if (now - g_lastNotifyMs < 30) return;
+  g_lastNotifyMs = now;
+
+  String batch;
+  for (int i = 0; i < BLE_BATCH_READINGS && g_relayCursor < (uint32_t)n; i++) {
+    uint32_t seq = 0, steps = 0; time_t ts = 0; float hr = 0;
+    if (!queuePeek((int)g_relayCursor, &seq, &ts, &hr, &steps)) break;
+    // seq,epoch,hr,steps -- one reading per line, parsed by the phone.
+    batch += String((unsigned long)seq) + "," + String((long)ts) + "," +
+             String((int)hr) + "," + String((unsigned long)steps) + "\n";
+    g_relayCursor++;
+  }
+  if (batch.length() == 0) return;
+
+  g_dataChar->setValue((uint8_t *)batch.c_str(), batch.length());
+  g_dataChar->notify();
+}
+
 class WatchCharCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
     String uuid = c->getUUID().toString();
@@ -126,6 +179,15 @@ class WatchCharCallbacks : public BLECharacteristicCallbacks {
         BLE_DBG("clock <- %lu (%s)", (unsigned long)epoch, clockIso(epoch));
         bleNotifyState();
       }
+    } else if (uuid == BLE_UUID_ACK) {
+      // The phone confirms the BACKEND accepted everything up to this seq.
+      // Only now is it safe to forget it.
+      uint32_t seq = (uint32_t)strtoul(val.c_str(), nullptr, 10);
+      int dropped = queueDropThrough(seq);
+      BLE_DBG("ack <- seq %lu (dropped %d, %d left)",
+              (unsigned long)seq, dropped, queueCount());
+      // Any readings above the acked seq stay queued and will be re-offered.
+      g_relayCursor = 0;
     } else if (uuid == BLE_UUID_CMD) {
       String cmd(val.c_str());
       cmd.trim();
@@ -134,6 +196,10 @@ class WatchCharCallbacks : public BLECharacteristicCallbacks {
         netApply();
       } else if (cmd == "sync") {
         syncWant();
+      } else if (cmd == "pull") {
+        // Phone is offering to relay: start streaming the queue.
+        bleRelayRequest();
+        BLE_DBG("relay requested (%d queued)", queueCount());
       } else if (cmd == "stat") {
         // fallthrough -> notify below
       } else if (cmd == "unpair") {
@@ -176,6 +242,10 @@ void bleStart() {
   BLECharacteristic *cmd   = svc->createCharacteristic(BLE_UUID_CMD,   BLECharacteristic::PROPERTY_WRITE);
   BLECharacteristic *name  = svc->createCharacteristic(BLE_UUID_NAME,  BLECharacteristic::PROPERTY_READ);
   g_stateChar = svc->createCharacteristic(BLE_UUID_STATE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  g_dataChar  = svc->createCharacteristic(BLE_UUID_DATA,  BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  BLECharacteristic *ack = svc->createCharacteristic(BLE_UUID_ACK, BLECharacteristic::PROPERTY_WRITE);
+  ack->setCallbacks(new WatchCharCallbacks());
+  g_dataChar->addDescriptor(new BLE2902());   // lets the phone subscribe to notifications
 
   BLE2902 *cccd = new BLE2902();
   g_stateChar->addDescriptor(cccd);          // needed before a client can subscribe
@@ -211,6 +281,7 @@ void bleStart() {
 
 void bleTick() {
   if (!g_stackUp) return;
+  relayPump();                         // stream queued readings to a relaying phone
   uint32_t now = millis();
   if (now - g_lastStateMs >= 2000) {   // ~0.5 Hz state beacon while connected
     g_lastStateMs = now;

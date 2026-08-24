@@ -7,8 +7,15 @@
  *   3. writes ASCII commands: apply | sync | stat | unpair | reboot
  *   4. reads / subscribes to STATE (a short status string)
  *
- * Health data is NOT carried over BLE — the watch uploads directly to the
- * backend over WiFi once paired.
+ * BLE now ALSO carries health data, which the original design excluded. A phone
+ * can write CMD "pull" to have the watch stream its offline queue over the DATA
+ * characteristic, upload it, and write the highest accepted sequence back to
+ * ACK. The watch keeps every reading until that ack arrives -- delivery over
+ * BLE alone proves nothing, since the phone may have no signal -- so a failed
+ * upload costs nothing and redelivery is harmless.
+ *
+ * The watch still uploads directly over WiFi whenever it can; the bridge is for
+ * when it cannot.
  */
 
 #pragma once
@@ -21,3 +28,4 @@ bool bleActive();     // stack is up
 void bleNotifyState();// immediately push the current STATE to a connected peer
 void bleSleep();      // drop advertising + power the BT controller off (standby)
 void bleWake();       // power the controller back on + re-advertise (out of standby)
+void bleRelayRequest();// phone offered to relay: start streaming the queue over DATA

@@ -489,6 +489,7 @@ bool pairingBusy() { return g_connectPending; }
 
 // ── Cloud sync ───────────────────────────────────────────────────────────────
 struct QueuedReading {
+  uint32_t seq;    // monotonic id -- lets a relay ack a range idempotently
   time_t ts;
   float  hr;
   uint32_t steps;
@@ -500,6 +501,7 @@ static int    g_qCount = 0;
 static uint32_t g_lastSampleMs = 0;
 static uint32_t g_lastUploadMs = 0;
 static uint32_t g_uploaded = 0;
+static uint32_t g_nextSeq = 1;      // 0 is reserved for "nothing acked yet"
 // Cumulative step count at the last enqueued reading. Readings carry the delta
 // against this, because the backend sums the field — see syncTick().
 static uint32_t g_stepsBaseline = 0;
@@ -533,12 +535,54 @@ static void enqueue(time_t ts, float hr, uint32_t steps) {
     g_qCount--;
   }
   QueuedReading &r = g_q[(g_qHead + g_qCount) % SYNC_QUEUE_MAX];
+  r.seq = g_nextSeq++;
   r.ts = ts;
   r.hr = hr;
   r.steps = steps;
   g_qCount++;
   DBG("queued reading #%d (hr=%d steps=%lu ts=%s)",
       g_qCount, (int)hr, (unsigned long)steps, clockIso(ts));
+}
+
+// ── Relay access to the queue (phone BLE bridge) ─────────────────────────────
+// A phone can drain this queue over BLE and upload on the watch's behalf. The
+// contract that makes that safe is END-TO-END acknowledgement: the watch keeps
+// every reading until the relay confirms the BACKEND accepted it, not merely
+// that BLE delivered it. A phone that receives a batch and then fails to upload
+// loses nothing -- the watch still has it and simply sends it again.
+//
+// Sequence numbers make redelivery harmless: acking a range that was already
+// dropped is a no-op, so a retry after a mid-transfer disconnect is safe.
+
+int queueCount() { return g_qCount; }
+
+bool queuePeek(int idx, uint32_t *seq, time_t *ts, float *hr, uint32_t *steps) {
+  if (idx < 0 || idx >= g_qCount) return false;
+  const QueuedReading &r = g_q[(g_qHead + idx) % SYNC_QUEUE_MAX];
+  if (seq)   *seq = r.seq;
+  if (ts)    *ts = r.ts;
+  if (hr)    *hr = r.hr;
+  if (steps) *steps = r.steps;
+  return true;
+}
+
+// Drop everything up to and including `seq`. Called only once the relay has
+// confirmed the backend took it.
+int queueDropThrough(uint32_t seq) {
+  int dropped = 0;
+  while (g_qCount > 0) {
+    const QueuedReading &r = g_q[g_qHead];
+    if (r.seq > seq) break;              // reached data the relay has not acked
+    g_qHead = (g_qHead + 1) % SYNC_QUEUE_MAX;
+    g_qCount--;
+    dropped++;
+  }
+  if (dropped) {
+    g_uploaded += dropped;
+    DBG("relay acked through seq %lu -> dropped %d, %d left",
+        (unsigned long)seq, dropped, g_qCount);
+  }
+  return dropped;
 }
 
 static void upload() {

@@ -51,6 +51,15 @@ int  linkApClients();        // phones currently joined
 const char *linkApSsid();    // "FitnessAI-A4B1C2"
 void linkApTick();           // idle timeout; call from the main loop
 
+// ── Relay access to the offline queue (phone BLE bridge) ─────────────────────
+// Lets a phone drain the queue and upload on the watch's behalf. Readings are
+// only discarded once the relay confirms the BACKEND accepted them -- delivery
+// over BLE alone is not enough, so a phone that cannot reach the network loses
+// nothing. Sequence numbers make a repeated ack harmless after a disconnect.
+int  queueCount();
+bool queuePeek(int idx, uint32_t *seq, time_t *ts, float *hr, uint32_t *steps);
+int  queueDropThrough(uint32_t seq);   // returns how many were dropped
+
 // ── Clock (NTP) ──────────────────────────────────────────────────────────────
 void  clockBegin();          // start NTP sync attempt (call after WiFi up)
 bool  clockSynced();         // got a real epoch yet?

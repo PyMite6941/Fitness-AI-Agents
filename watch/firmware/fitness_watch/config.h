@@ -301,6 +301,21 @@
 #define BLE_UUID_NAME     "0000F1A6-0000-1000-8000-00805F9B34FB"
 #define BLE_UUID_STATE    "0000F1A7-0000-1000-8000-00805F9B34FB"
 
+// Bridge characteristics. BLE was originally control-only ("health data is NOT
+// carried over BLE"), which meant a phone could pair the watch but not relay for
+// it. These two make the phone a data bridge, which is the cheapest route to a
+// watch that stays synced away from a known network.
+//   DATA — notify: batches of queued readings, newline-separated CSV
+//   ACK  — write:  the highest seq the phone has CONFIRMED the backend accepted
+#define BLE_UUID_DATA     "0000F1A8-0000-1000-8000-00805F9B34FB"
+#define BLE_UUID_ACK      "0000F1A9-0000-1000-8000-00805F9B34FB"
+
+// Readings per notification. Keep the packet inside the negotiated MTU: the
+// default BLE MTU is 23 bytes (20 usable), and the ESP32 asks for more, but a
+// phone is free to refuse. At ~34 bytes of CSV per reading, 4 fits comfortably
+// inside a 247-byte MTU with headroom for a short phone that only grants less.
+#define BLE_BATCH_READINGS  4
+
 // ── Cloud sync (Milestone 4/5) ───────────────────────────────────────────────
 // Device tokens are issued by the web app (Devices page -> /device/pair) and
 // entered into the watch's setup portal. Readings POST to BACKEND_URL/ingest/
